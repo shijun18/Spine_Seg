@@ -160,7 +160,7 @@ if __name__ == "__main__":
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         save_flag = False if args.save == 'no' or args.save == 'n' else True
-        cls_result = segnetwork.test(test_path,save_path,mode=MODE,save_flag=save_flag)
+        seg_result,cls_result = segnetwork.test(test_path,save_path,mode=MODE,save_flag=save_flag)
 
         if MODE != 'seg':
             csv_path = os.path.join(save_path,ROI_NAME + '.csv')

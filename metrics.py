@@ -148,3 +148,24 @@ class RunningDice():
     
     def init_op(self):
         self.overall_confusion_matrix = None
+
+
+
+def binary_dice(y_true, y_pred):
+    smooth = 1e-7
+    y_true_f = y_true.flatten()
+    y_pred_f = y_pred.flatten()
+    intersection = np.sum(y_true_f * y_pred_f)
+    return (2. * intersection + smooth) / (np.sum(y_true_f) + np.sum(y_pred_f) + smooth)
+
+def multi_dice(y_true,y_pred,num_classes):
+    dice_list = []
+    for i in range(num_classes):
+        true = (y_true == i+1).astype(np.float32)
+        pred = (y_pred == i+1).astype(np.float32)
+        dice = binary_dice(true,pred)
+        dice_list.append(dice)
+    
+    dice_list = [round(case, 4) for case in dice_list]
+    
+    return dice_list, round(np.mean(dice_list),4)

@@ -2,12 +2,14 @@ import os
 import json
 import glob
 
+from numpy import not_equal
+
 from utils import get_path_with_annotation,get_path_with_annotation_ratio
 from utils import get_weight_path
 
 __disease__ = ['Spine']
 __net__ = ['unet','unet++','FPN','deeplabv3+','swin_trans_unet']
-__encoder_name__ = [None,'resnet18','resne34','resnet50','se_resnet50','resnext50_32x4d','timm-resnest14d','timm-resnest26d','timm-resnest50d', \
+__encoder_name__ = [None,'resnet18','resne34','resnet50','se_resnet50','resnext50_32x4d', 'timm-resnest14d','timm-resnest26d','timm-resnest50d', \
                     'efficientnet-b4', 'efficientnet-b5','efficientnet-b6','efficientnet-b7']
 
 __mode__ = ['cls','seg','mtl']
@@ -19,9 +21,9 @@ json_path = {
     
 DISEASE = 'Spine' 
 MODE = 'seg'
-NET_NAME = 'unet'
-ENCODER_NAME = None
-VERSION = 'v1.0-all'
+NET_NAME = 'deeplabv3+'
+ENCODER_NAME = 'efficientnet-b5'
+VERSION = 'v4.10-all'
 
 with open(json_path[DISEASE], 'r') as fp:
     info = json.load(fp)
@@ -42,11 +44,22 @@ GPU_NUM = len(DEVICE.split(','))
 
 # Arguments for trainer initialization
 #--------------------------------- single or multiple
-ROI_NUMBER = None# or [1-N]
+# ROI_NUMBER = None
+# ROI_NUMBER = [1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18]# or [1-N]
+# ROI_NUMBER = [1,2,3,4,5,6,7,8,11,12,13,14,15,16,17]# or [1-N]
+# ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
+ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
+# ROI_NUMBER = [9,10,18,19]
+# ROI_NUMBER = [10,19]
+
 NUM_CLASSES = info['annotation_num'] + 1  # 2 for binary, more for multiple classes
 if ROI_NUMBER is not None:
-    NUM_CLASSES = 2
-    ROI_NAME = info['annotation_list'][ROI_NUMBER - 1]
+    if isinstance(ROI_NUMBER,list):
+        NUM_CLASSES = len(ROI_NUMBER) + 1
+        ROI_NAME = 'Part_{}'.format(str(len(ROI_NUMBER)))
+    else:
+        NUM_CLASSES = 2
+        ROI_NAME = info['annotation_list'][ROI_NUMBER - 1]
 else:
     ROI_NAME = 'All'
 
@@ -62,14 +75,19 @@ PATH_LIST = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
 #zero
 # PATH_LIST = get_path_with_annotation(info['2d_data']['csv_path'],'path',ROI_NAME)
 
+
 #half
-# PATH_LIST = get_path_with_annotation_ratio(info['2d_data']['csv_path'],'path',ROI_NAME,ratio=0.5)
+# PATH_LIST = get_path_with_annotation_ratio(info['2d_data']['csv_path'],'path','T9/T10',ratio=0.5)
+
+
+#equal
+# PATH_LIST = get_path_with_annotation_ratio(info['2d_data']['csv_path'],'path','T9/T10',ratio=1)
 #---------------------------------
 
 
 #--------------------------------- others
 INPUT_SHAPE = (512,512)
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 
 CKPT_PATH = './ckpt/{}/{}/{}/{}/fold{}'.format(DISEASE,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
 
@@ -117,6 +135,7 @@ if MODE == 'cls':
     LOSS_FUN = 'BCEWithLogitsLoss'
 elif MODE == 'seg' :
     LOSS_FUN = 'TopkCEPlusDice'
+    # LOSS_FUN = 'TopKLoss'
 else:
     LOSS_FUN = 'BCEPlusDice'
 

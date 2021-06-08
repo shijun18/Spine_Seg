@@ -4,6 +4,35 @@ import h5py
 import numpy as np
 import torch
 import random
+from matplotlib import pyplot as plt 
+
+
+def draw_contour(image,pred_label,true_label,n):
+    #image：原图  label:类别大小以数字区分  n：为器官数量
+    colors = ['red','green','blue','orange','cyan','purple','palegreen','pink','brown','olive','tomato','crimson','indigo',\
+            'turquoise','seagreen','lightskyblue','lime','sienna','fuchsia'] 
+    plt.figure(figsize=(8,16))
+    plt.axis('off')
+    final_labels =  np.zeros(pred_label.shape + (n,), dtype=np.uint8)
+    plt.subplot(121)
+    plt.imshow(image,'gray')
+    for z in range(n):
+        final_labels[pred_label==z+1,z]=1
+    for i in range(n):
+        if np.sum(final_labels[:,:,i]):
+            plt.contour(final_labels[:,:,i],colors = colors[i])
+
+    final_labels =  np.zeros(true_label.shape + (n,), dtype=np.uint8)
+    plt.subplot(122)
+    plt.imshow(image,'gray')
+    for z in range(n):
+        final_labels[true_label==z+1,z]=1
+    for i in range(n):
+        if np.sum(final_labels[:,:,i]):
+            plt.contour(final_labels[:,:,i],colors = colors[i])
+
+    plt.show()
+    plt.close()
 
 
 def hdf5_reader(data_path, key):

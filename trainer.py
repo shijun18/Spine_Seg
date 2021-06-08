@@ -116,8 +116,8 @@ class SemanticSeg(object):
             self._get_pre_trained(self.weight_path,ckpt_point)
 
 
-        if self.roi_number is not None:
-            assert self.num_classes == 2, "num_classes must be set to 2 for binary segmentation"
+        # if self.roi_number is not None:
+        #     assert self.num_classes == 2, "num_classes must be set to 2 for binary segmentation"
         
         
 
@@ -196,7 +196,7 @@ class SemanticSeg(object):
                 RandomErase2D(scale_flag=False),
                 RandomZoom2D(),
                 RandomDistort2D(),
-                RandomRotate2D(),
+                # RandomRotate2D(),
                 # RandomFlip2D(mode='hv'),
                 # RandomAdjust2D(),
                 RandomNoise2D(),
@@ -229,14 +229,15 @@ class SemanticSeg(object):
 
         # loss_threshold = 1.0
 
-        early_stopping = EarlyStopping(patience=20,verbose=True,monitor='val_loss',op_type='min')
+        # early_stopping = EarlyStopping(patience=20,verbose=True,monitor='val_loss',op_type='min')
+        early_stopping = EarlyStopping(patience=20,verbose=True,monitor='val_dice',op_type='max')
         for epoch in range(self.start_epoch, self.n_epoch):
             train_loss, train_dice, train_acc = self._train_on_epoch(epoch, net, loss, optimizer, train_loader, scaler)
 
             val_loss, val_dice, val_acc = self._val_on_epoch(epoch, net, loss, val_path)
 
             if lr_scheduler is not None:
-                lr_scheduler.step(val_loss)
+                lr_scheduler.step()
 
             torch.cuda.empty_cache()
             print('epoch:{},train_loss:{:.5f},val_loss:{:.5f}'.format(epoch, train_loss, val_loss))
@@ -257,7 +258,8 @@ class SemanticSeg(object):
             }, epoch)
             self.writer.add_scalar('data/lr', optimizer.param_groups[0]['lr'],epoch)
             
-            early_stopping(val_loss)
+            # early_stopping(val_loss)
+            early_stopping(val_dice)
             #save
             if val_loss <= self.loss_threshold:
                 self.loss_threshold = val_loss
@@ -468,7 +470,7 @@ class SemanticSeg(object):
 
         return val_loss.avg, val_dice.avg, val_acc.avg
 
-    def test(self, test_path, save_path, net=None, mode='seg', save_flag=False):
+    def test(self, test_path, save_path=None, net=None, mode='seg', save_flag=False):
         if net is None:
             net = self.net
         
@@ -514,6 +516,12 @@ class SemanticSeg(object):
             'prob': []
         }
 
+        seg_result = {
+            'true':[],
+            'pred':[]
+        }
+
+
         with torch.no_grad():
             for step, sample in enumerate(test_loader):
                 data = sample['image']
@@ -553,6 +561,8 @@ class SemanticSeg(object):
                 seg_output = torch.argmax(seg_output,1).detach().cpu().numpy()  #N*H*W N=1
                 target = torch.argmax(target,1).detach().cpu().numpy()
                 run_dice.update_matrix(target,seg_output)
+                seg_result['pred'].append(seg_output)
+                seg_result['true'].append(target)
                 # print(np.unique(seg_output),np.unique(target))
 
                 # save
@@ -563,13 +573,13 @@ class SemanticSeg(object):
 
                 torch.cuda.empty_cache()
                 
-                print('step:{},test_dice:{:.5f},test_acc:{:.5f}'.format(step,dice.item(),acc.item()))
+                # print('step:{},test_dice:{:.5f},test_acc:{:.5f}'.format(step,dice.item(),acc.item()))
             
         rundice, dice_list = run_dice.compute_dice() 
         print("Category Dice: ", dice_list)
         print('avg_dice:{:.5f},avg_acc:{:.5f}，rundice:{:.5f}'.format(test_dice.avg, test_acc.avg, rundice))
 
-        return cls_result
+        return seg_result,cls_result
 
     def _get_net(self, net_name):
         if net_name == 'unet':

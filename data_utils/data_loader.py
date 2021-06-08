@@ -156,8 +156,15 @@ class DataGenerator(Dataset):
         mask = hdf5_reader(self.path_list[index],'label')
 
         if self.roi_number is not None:
-            assert self.num_class == 2
-            mask = (mask == self.roi_number).astype(np.float32)
+            if isinstance(self.roi_number,list):
+                tmp_mask = np.zeros_like(mask,dtype=np.float32)
+                assert self.num_class == len(self.roi_number) + 1
+                for i, roi in enumerate(self.roi_number):
+                    tmp_mask[mask == roi] = i+1
+                mask = tmp_mask
+            else:
+                assert self.num_class == 2
+                mask = (mask == self.roi_number).astype(np.float32)
 
         sample = {'image': image, 'mask': mask}
         if self.transform is not None:
