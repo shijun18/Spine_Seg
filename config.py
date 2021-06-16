@@ -47,8 +47,8 @@ GPU_NUM = len(DEVICE.split(','))
 # ROI_NUMBER = None
 # ROI_NUMBER = [1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18]# or [1-N]
 # ROI_NUMBER = [1,2,3,4,5,6,7,8,11,12,13,14,15,16,17]# or [1-N]
-# ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
-ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
+ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
+# ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
 # ROI_NUMBER = [9,10,18,19]
 # ROI_NUMBER = [10,19]
 
@@ -98,7 +98,7 @@ INIT_TRAINER = {
   'net_name':NET_NAME,
   'encoder_name':ENCODER_NAME,
   'lr':1e-3, 
-  'n_epoch':200,
+  'n_epoch':100,
   'channels':1,
   'num_classes':NUM_CLASSES, 
   'roi_number':ROI_NUMBER,
@@ -145,7 +145,7 @@ SETUP_TRAINER = {
   'optimizer':'Adam',
   'loss_fun':LOSS_FUN,
   'class_weight':None, #[1,4]
-  'lr_scheduler':'CosineAnnealingWarmRestarts', #'CosineAnnealingLR'
+  'lr_scheduler':'CosineAnnealingWarmRestarts', #'CosineAnnealingLR','MultiStepLR'
   }
 #---------------------------------
 TEST_PATH = None

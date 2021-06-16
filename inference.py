@@ -51,7 +51,7 @@ INIT_TRAINER = {
   'channels':1,
   'num_classes':NUM_CLASSES, 
   'roi_number':ROI_NUMBER,
-  'input_shape':(512,512),
+  'input_shape':INPUT_SHAPE,
   'crop':0,
   'batch_size':16,
   'num_workers':2,

@@ -39,7 +39,7 @@
     },
     "3d_data":{
         "save_path":"/staff/shijun/dataset/Med_Seg/Spine/3d_data",
-        "crop":48,
+        "crop":0,
         "shape":[128,256,256]
     },
     "mean_std":{
