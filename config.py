@@ -8,11 +8,11 @@ from utils import get_path_with_annotation,get_path_with_annotation_ratio
 from utils import get_weight_path
 
 __disease__ = ['Spine']
-__net__ = ['unet','unet++','FPN','deeplabv3+','swin_trans_unet']
-__encoder_name__ = [None,'resnet18','resne34','resnet50','se_resnet50','resnext50_32x4d', 'timm-resnest14d','timm-resnest26d','timm-resnest50d', \
+__net__ = ['unet','unet++','FPN','deeplabv3+']
+__encoder_name__ = ['resnet18','resnet34','resnet50','se_resnet50','resnext50_32x4d', 'timm-resnest14d','timm-resnest26d','timm-resnest50d', \
                     'efficientnet-b4', 'efficientnet-b5','efficientnet-b6','efficientnet-b7']
 
-__mode__ = ['cls','seg','mtl']
+__mode__ = ['cls','seg']
 
 
 json_path = {
@@ -22,8 +22,8 @@ json_path = {
 DISEASE = 'Spine' 
 MODE = 'seg'
 NET_NAME = 'deeplabv3+'
-ENCODER_NAME = 'efficientnet-b5'
-VERSION = 'v4.10-all'
+ENCODER_NAME = 'resnet50'
+VERSION = 'v4.3-all'
 
 with open(json_path[DISEASE], 'r') as fp:
     info = json.load(fp)
@@ -45,12 +45,9 @@ GPU_NUM = len(DEVICE.split(','))
 # Arguments for trainer initialization
 #--------------------------------- single or multiple
 # ROI_NUMBER = None
-# ROI_NUMBER = [1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18]# or [1-N]
-# ROI_NUMBER = [1,2,3,4,5,6,7,8,11,12,13,14,15,16,17]# or [1-N]
 ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
 # ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
-# ROI_NUMBER = [9,10,18,19]
-# ROI_NUMBER = [10,19]
+
 
 NUM_CLASSES = info['annotation_num'] + 1  # 2 for binary, more for multiple classes
 if ROI_NUMBER is not None:
@@ -98,7 +95,7 @@ INIT_TRAINER = {
   'net_name':NET_NAME,
   'encoder_name':ENCODER_NAME,
   'lr':1e-3, 
-  'n_epoch':100,
+  'n_epoch':80,
   'channels':1,
   'num_classes':NUM_CLASSES, 
   'roi_number':ROI_NUMBER,
@@ -114,30 +111,24 @@ INIT_TRAINER = {
   'weight_decay': 0.0001,
   'momentum': 0.99,
   'gamma': 0.1,
-  'milestones': [40,80],
+  'milestones': [20,40],
   'T_max':5,
   'mean':MEAN,
   'std':STD,
   'mode':MODE,
   'topk':20,
-  'freeze':None,
   'use_fp16':True #False if the machine you used without tensor core
  }
 #---------------------------------
 
-__seg_loss__ = ['DiceLoss','TverskyLoss','FocalTverskyLoss','TopkCEPlusDice','DynamicTopkCEPlusDice','TopkCEPlusTopkShiftDice','TopkCEPlusShiftDice','PowDiceLoss',\
-                'Cross_Entropy','TopkDiceLoss','DynamicTopKLoss','TopKLoss','CEPlusDice','TopkCEPlusDice','CEPlusTopkDice','TopkCEPlusTopkDice']
+__seg_loss__ = ['DiceLoss','Cross_Entropy','DynamicTopKLoss','TopKLoss']
 __cls_loss__ = ['BCEWithLogitsLoss']
-__mtl_loss__ = ['BCEPlusDice']
 # Arguments when perform the trainer 
 
 if MODE == 'cls':
     LOSS_FUN = 'BCEWithLogitsLoss'
 elif MODE == 'seg' :
-    LOSS_FUN = 'TopkCEPlusDice'
-    # LOSS_FUN = 'TopKLoss'
-else:
-    LOSS_FUN = 'BCEPlusDice'
+    LOSS_FUN = 'TopKLoss'
 
 SETUP_TRAINER = {
   'output_dir':'./ckpt/{}/{}/{}/{}'.format(DISEASE,MODE,VERSION,ROI_NAME),
@@ -145,7 +136,7 @@ SETUP_TRAINER = {
   'optimizer':'Adam',
   'loss_fun':LOSS_FUN,
   'class_weight':None, #[1,4]
-  'lr_scheduler':'CosineAnnealingWarmRestarts', #'CosineAnnealingLR','MultiStepLR'
+  'lr_scheduler':'MultiStepLR', #'CosineAnnealingLR','MultiStepLR','CosineAnnealingWarmRestarts'
   }
 #---------------------------------
 TEST_PATH = None

@@ -34,31 +34,6 @@ class Normalize(object):
         return new_sample
 
 
-class Trunc_and_Normalize(object):
-    '''
-    truncate gray scale and normalize to [0,1]
-    '''
-    def __init__(self, scale):
-        self.scale = scale
-        assert len(self.scale) == 2, 'scale error'
-
-    def __call__(self, sample):
-        image = sample['image']
-        mask = sample['mask']
-
-        # gray truncation
-        image = image - self.scale[0]
-        gray_range = self.scale[1] - self.scale[0]
-        image[image < 0] = 0
-        image[image > gray_range] = gray_range
-
-        image = image / gray_range
-
-        new_sample = {'image': image, 'mask': mask}
-
-        return new_sample
-
-
 class CropResize(object):
     '''
     Data preprocessing.

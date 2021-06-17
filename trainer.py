@@ -69,7 +69,6 @@ class SemanticSeg(object):
                  std=0,
                  mode='cls',
                  topk=10,
-                 freeze=None,
                  use_fp16=True):
         super(SemanticSeg, self).__init__()
 
@@ -105,7 +104,6 @@ class SemanticSeg(object):
 
         self.mode = mode
         self.topk = topk
-        self.freeze = freeze
         self.use_fp16=use_fp16
 
         os.environ['CUDA_VISIBLE_DEVICES'] = self.device
@@ -114,10 +112,6 @@ class SemanticSeg(object):
 
         if self.pre_trained:
             self._get_pre_trained(self.weight_path,ckpt_point)
-
-
-        # if self.roi_number is not None:
-        #     assert self.num_classes == 2, "num_classes must be set to 2 for binary segmentation"
         
         
 
@@ -164,13 +158,6 @@ class SemanticSeg(object):
 
         net = self.net
 
-        # only for deeplab
-        if self.freeze is not None and 'deeplab' in self.net_name:
-            if self.freeze == 'backbone':
-                net.freeze_backbone()
-            elif self.freeze == 'classifier':
-                net.freeze_classifier()
-
         lr = self.lr
         loss = self._get_loss(loss_fun, class_weight)
 
@@ -196,9 +183,6 @@ class SemanticSeg(object):
                 RandomErase2D(scale_flag=False),
                 RandomZoom2D(),
                 RandomDistort2D(),
-                # RandomRotate2D(),
-                # RandomFlip2D(mode='hv'),
-                # RandomAdjust2D(),
                 RandomNoise2D(),
                 To_Tensor(num_class=self.num_classes)
             ])
@@ -584,8 +568,9 @@ class SemanticSeg(object):
     def _get_net(self, net_name):
         if net_name == 'unet':
             if self.encoder_name is None:
-                from model.unet import unet
-                net = unet(net_name,in_channels=self.channels,classes=self.num_classes,aux_classifier=True)
+                raise ValueError(
+                    "encoder name must not be 'None'!"
+                )
             else:
                 import segmentation_models_pytorch as smp
                 net = smp.Unet(
@@ -639,16 +624,6 @@ class SemanticSeg(object):
                     classes=self.num_classes,                     
                     aux_params={"classes":self.num_classes-1} 
                 )
-
-
-        elif net_name == 'swin_trans_unet':
-            if self.encoder_name is not None:
-                raise ValueError(
-                    "encoder name must be 'None'!"
-                )
-            else:
-                from model.unet import unet
-                net = unet(net_name,in_channels=self.channels,classes=self.num_classes,aux_classifier=True)
             
         return net
 
@@ -663,10 +638,6 @@ class SemanticSeg(object):
             from loss.cross_entropy import DynamicTopKLoss
             loss = DynamicTopKLoss(weight=class_weight,step_threshold=self.step_pre_epoch)
         
-        elif loss_fun == 'DynamicTopkCEPlusDice':
-            from loss.combine_loss import DynamicTopkCEPlusDice
-            loss = DynamicTopkCEPlusDice(weight=class_weight, ignore_index=0, step_threshold=self.step_pre_epoch)
-        
         elif loss_fun == 'TopKLoss':
             from loss.cross_entropy import TopKLoss
             loss = TopKLoss(weight=class_weight, k=self.topk)
@@ -674,55 +645,10 @@ class SemanticSeg(object):
         elif loss_fun == 'DiceLoss':
             from loss.dice_loss import DiceLoss
             loss = DiceLoss(weight=class_weight, ignore_index=0, p=1)
-        elif loss_fun == 'ShiftDiceLoss':
-            from loss.dice_loss import ShiftDiceLoss
-            loss = ShiftDiceLoss(weight=class_weight,ignore_index=0, reduction='topk',shift=0.5, p=1, k=self.topk)
-        elif loss_fun == 'TopkDiceLoss':
-            from loss.dice_loss import DiceLoss
-            loss = DiceLoss(weight=class_weight, ignore_index=0,reduction='topk', k=self.topk)
-
-        elif loss_fun == 'PowDiceLoss':
-            from loss.dice_loss import DiceLoss
-            loss = DiceLoss(weight=class_weight, ignore_index=0, p=2)
-        
-        elif loss_fun == 'TverskyLoss':
-            from loss.tversky_loss import TverskyLoss
-            loss = TverskyLoss(weight=class_weight, ignore_index=0, alpha=0.7)
-        
-        elif loss_fun == 'FocalTverskyLoss':
-            from loss.tversky_loss import TverskyLoss
-            loss = TverskyLoss(weight=class_weight, ignore_index=0, alpha=0.7, gamma=0.75)
 
         elif loss_fun == 'BCEWithLogitsLoss':
             loss = nn.BCEWithLogitsLoss(class_weight)
         
-        elif loss_fun == 'BCEPlusDice':
-            from loss.combine_loss import BCEPlusDice
-            loss = BCEPlusDice(weight=class_weight,ignore_index=0,p=1)
-        
-        elif loss_fun == 'CEPlusDice':
-            from loss.combine_loss import CEPlusDice
-            loss = CEPlusDice(weight=class_weight, ignore_index=0)
-        
-        elif loss_fun == 'CEPlusTopkDice':
-            from loss.combine_loss import CEPlusTopkDice
-            loss = CEPlusTopkDice(weight=class_weight, ignore_index=0, reduction='topk', k=self.topk)
-        
-        elif loss_fun == 'TopkCEPlusTopkDice':
-            from loss.combine_loss import TopkCEPlusTopkDice
-            loss = TopkCEPlusTopkDice(weight=class_weight, ignore_index=0, reduction='topk', k=self.topk)
-        
-        elif loss_fun == 'TopkCEPlusDice':
-            from loss.combine_loss import TopkCEPlusDice
-            loss = TopkCEPlusDice(weight=class_weight, ignore_index=0, k=self.topk)
-        
-        elif loss_fun == 'TopkCEPlusShiftDice':
-            from loss.combine_loss import TopkCEPlusShiftDice
-            loss = TopkCEPlusShiftDice(weight=class_weight,ignore_index=0, shift=0.5,k=self.topk)
-        
-        elif loss_fun == 'TopkCEPlusTopkShiftDice':
-            from loss.combine_loss import TopkCEPlusTopkShiftDice
-            loss = TopkCEPlusTopkShiftDice(weight=class_weight,ignore_index=0, reduction='topk',shift=0.5,k=self.topk)
         
         return loss
 
@@ -762,7 +688,6 @@ class SemanticSeg(object):
         self.net.load_state_dict(checkpoint['state_dict'])
         if ckpt_point:
             self.start_epoch = checkpoint['epoch'] + 1
-            # self.loss_threshold = eval(os.path.splitext(self.weight_path.split(':')[-1])[0])
 
 
 # computing tools
@@ -813,39 +738,7 @@ def binary_dice(predict, target, smooth=1e-5):
 
     return dice.mean()
 
-'''
-def compute_dice(predict, target, ignore_index=0, shift=0.5):
-    """
-    Compute dice
-    Args:
-        predict: A tensor of shape [N, C, *]
-        target: A tensor of same shape with predict
-        ignore_index: class index to ignore
-    Return:
-        mean dice over the batch
-    """
-    assert predict.shape == target.shape, 'predict & target shape do not match'
 
-    predict_shift = F.relu(predict-shift)
-    alpha = predict / (predict-shift)
-    alpha_relu = F.relu(alpha)
-    predict = predict_shift * alpha_relu
-
-    total_dice = 0.
-    dice_list = []
-    for i in range(target.shape[1]):
-        if i != ignore_index:
-            dice = binary_dice(predict[:, i], target[:, i])
-            # print(dice)
-            total_dice += dice
-            dice_list.append(round(dice.item(),4))
-    # print(dice_list)
-
-    if ignore_index is not None:
-        return total_dice / (target.shape[1] - 1)
-    else:
-        return total_dice / target.shape[1]
-'''
 def compute_dice(predict,target,ignore_index=0):
     """
     Compute dice
@@ -857,25 +750,19 @@ def compute_dice(predict,target,ignore_index=0):
         mean dice over the batch
     """
     assert predict.shape == target.shape, 'predict & target shape do not match'
-    total_dice = 0.
-    # predict = F.softmax(predict, dim=1)
 
     onehot_predict = torch.argmax(predict,dim=1)#N*H*W
     onehot_target = torch.argmax(target,dim=1) #N*H*W
 
-    dice_list = []
+    dice_list = -1.0*np.zeros((target.shape[1]),dtype=np.float32)
     for i in range(target.shape[1]):
-        if i != ignore_index:
-            # dice = binary_dice(predict[:, i], target[:, i])
-            dice = binary_dice((onehot_predict==i).float(), (onehot_target==i).float())
-            total_dice += dice
-            dice_list.append(round(dice.item(),4))
-    # print(dice_list)
+        if i not in onehot_predict and i not in onehot_target:
+            continue
+        dice = binary_dice((onehot_predict==i).float(), (onehot_target==i).float())
+        dice_list[i] = round(dice.item(),4)
+    dice_list = np.where(dice_list == -1.0, np.nan, dice_list)
 
-    if ignore_index is not None:
-        return total_dice/(target.shape[1] - 1)
-    else:
-        return total_dice/target.shape[1]
+    return np.nanmean(dice_list[1:])
 
 def accuracy(output, target):
     '''

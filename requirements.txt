@@ -1,0 +1,11 @@
+torch==1.7.1+cu110
+torchvision==0.8.2+cu110
+scikit-image==0.17.2
+pandas==1.0.3
+opencv-contrib-python==3.4.2.17
+h5py==2.10.0 
+SimpleITK==1.2.4
+tqdm==4.47.0
+Pillow==6.2.1
+segmentation-models-pytorch==0.1.3
+scipy==1.4.1 
