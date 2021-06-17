@@ -30,9 +30,9 @@
 
 ### 运行环境
 
-依赖包见 `requirements.txt`，ps:可能不全，遗漏自补。
+依赖包: 见 `requirements.txt`，ps:可能不全，遗漏自补。
 
-硬件NVIDIA A100 *2
+硬件:  `NVIDIA A100` *2
 
 ### 实验设置
 
