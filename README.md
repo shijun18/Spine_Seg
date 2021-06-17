@@ -6,98 +6,25 @@
 
 ## 代码结构
 
-|-- Spine_Seg
-
-```
-|-- converter  (数据处理和分析模块)
-```
-
-
-```
-|-- meta_data
-```
-
-
-```
-|-- static_files
-```
-
-
-```
-nii_reader.py  (nii解析)
-```
-
-
-```
-......
-```
-
-
-```
-|-- data_utils (数据加载模块)
-```
-
-
-```
-data_loader.py
-```
-
-
-```
-transformer.py
-```
-
-
-```
-|-- loss (损失函数定义)
-```
-
-
-```
-metrics.py (指标定义)
-```
-
-
-```
-config.py (参数文件)
-```
-
-
-```
-trainer.py (训练主类)
-```
-
-
-```
-run.py (运行脚本)
-```
-
-
-```
-test.py (测试脚本)
-```
-
-
-```
-eval.py (验证脚本)
-```
-
-
-```
-ensemble.py (结果融合)
-```
-
-
-```
-prepare_submission.py (准备提交结果)
-```
-
-
-```
-utils.py (工具箱)
-```
-
-
+- Spine_Seg
+  - converter  (数据处理和分析模块)
+    - meta_data
+    - static_files
+    - nii_reader.py  (nii解析)
+    - ......
+  - data_utils (数据加载模块)
+    - data_loader.py
+    - transformer.py
+  - loss (损失函数定义)
+  - metrics.py (指标定义)
+  - config.py (参数文件)
+  - trainer.py (训练主类)
+  - run.py (运行脚本)
+  - test.py (测试脚本)
+  - eval.py (验证脚本)
+  - ensemble.py (结果融合)
+  - prepare_submission.py (准备提交结果)
+  - utils.py (工具箱)
 
 ## 代码执行
 
@@ -109,12 +36,15 @@ utils.py (工具箱)
 
 ### 实验设置
 
-| Net           | Encoder  | lr   | shape   | Batch size | lr_scheduler | optimizer | loss                      |
-| ------------- | -------- | ---- | ------- | ---------- | ------------ | --------- | ------------------------- |
-| Deeplabv3plus | Resnet50 | 1e-3 | 512x512 | 16         | MultiStepLR  | Adam      | Topk Cross Entropy (k=20) |
+| Net           | Encoder  | lr   | shape   | Batch size |
+| ------------- | -------- | ---- | ------- | ---------- |
+| Deeplabv3plus | Resnet50 | 1e-3 | 512x512 | 16         |
 
-### 
-训练过程
+| lr_scheduler | optimizer | loss                      | Fold num |
+| ------------ | --------- | ------------------------- | -------- |
+| MultiStepLR  | Adam      | Topk Cross Entropy (k=20) | 5        |
+
+### 训练过程
 
 将所有目标分为两类，椎骨（10种-Part_10）与椎间盘（9种-Part_9）分开训练。
 
@@ -142,7 +72,6 @@ utils.py (工具箱)
     ```shell
     python run.py -m train-cross
     ```
-
 
 ### 测试过程
 
