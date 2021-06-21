@@ -11,17 +11,7 @@ class CrossentropyLoss(torch.nn.CrossEntropyLoss):
         target = target.long()
         num_classes = inp.size()[1]
 
-        i0 = 1
-        i1 = 2
-        # this is ugly but torch only allows to transpose two axes at once
-        while i1 < len(inp.shape): 
-            inp = inp.transpose(i0, i1)
-            i0 += 1
-            i1 += 1
-
-        inp = inp.contiguous()
-        inp = inp.view(-1, num_classes)
-
+        inp = inp.permute(0, 2, 3, 1).contiguous().view(-1, num_classes)
         target = target.view(-1,)
 
         return super(CrossentropyLoss, self).forward(inp, target)
@@ -62,4 +52,31 @@ class DynamicTopKLoss(CrossentropyLoss):
         if self.step % self.step_threshold == 0 and self.k > self.min_k:
             self.k -= 1
         
+        return res.mean()
+
+
+class BCELoss(torch.nn.BCEWithLogitsLoss):
+
+    def forward(self, inp, target):
+        
+        target = target.float()
+        num_classes = inp.size()[1]
+
+        inp = inp.permute(0, 2, 3, 1).contiguous().view(-1, num_classes)
+        target = target.view(-1,)
+
+        return super(BCELoss, self).forward(inp, target)
+
+
+
+class TopKBCELoss(BCELoss):
+
+    def __init__(self, weight=None, k=10):
+        self.k = k
+        super(TopKBCELoss, self).__init__(weight, False, False, reduction='none')
+
+    def forward(self, inp, target):
+        res = super(TopKBCELoss, self).forward(inp, target)
+        num_voxels = np.prod(res.shape)
+        res, _ = torch.topk(res.view((-1, )), int(num_voxels * self.k / 100), sorted=False)
         return res.mean()

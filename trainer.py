@@ -6,13 +6,15 @@ from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 from torchvision import transforms
 import numpy as np
+import pandas as pd
 import math
 import shutil
 
 from torch.nn import functional as F
 
 from data_utils.transformer import RandomFlip2D, RandomRotate2D, RandomErase2D,RandomZoom2D,RandomAdjust2D,RandomNoise2D,RandomDistort2D
-from data_utils.data_loader import DataGenerator, To_Tensor, CropResize, Normalize
+from data_utils.data_loader import To_Tensor, CropResize, Normalize
+from data_utils.data_loader import DataGenerator as DataGenerator
 
 from torch.cuda.amp import autocast as autocast
 
@@ -70,7 +72,8 @@ class SemanticSeg(object):
                  mode='cls',
                  topk=10,
                  freeze=None,
-                 use_fp16=True):
+                 use_fp16=True,
+                 statistic_threshold=False):
         super(SemanticSeg, self).__init__()
 
         self.net_name = net_name
@@ -94,19 +97,21 @@ class SemanticSeg(object):
         self.start_epoch = 0
         self.global_step = 0
         self.loss_threshold = 2.0
+        self.metric_threshold = 0.0
 
         self.weight_decay = weight_decay
         self.momentum = momentum
         self.gamma = gamma
         self.milestones = milestones
         self.T_max = T_max
-        self.mean=mean
+        self.mean = mean
         self.std = std
 
         self.mode = mode
         self.topk = topk
         self.freeze = freeze
-        self.use_fp16=use_fp16
+        self.use_fp16 = use_fp16
+        self.statistic_threshold = statistic_threshold
 
         os.environ['CUDA_VISIBLE_DEVICES'] = self.device
 
@@ -127,6 +132,7 @@ class SemanticSeg(object):
                 cur_fold,
                 output_dir=None,
                 log_dir=None,
+                csv_path=None,
                 optimizer='Adam',
                 loss_fun='Cross_Entropy',
                 class_weight=None,
@@ -164,12 +170,11 @@ class SemanticSeg(object):
 
         net = self.net
 
-        # only for deeplab
-        if self.freeze is not None and 'deeplab' in self.net_name:
-            if self.freeze == 'backbone':
-                net.freeze_backbone()
-            elif self.freeze == 'classifier':
-                net.freeze_classifier()
+        if self.statistic_threshold:
+            self.csv_path = os.path.join(csv_path,'threshold.csv')
+            col = ['epoch','step'] + [str(case) for case in range(1,self.num_classes)]
+            df = pd.DataFrame(columns=col)
+            df.to_csv(self.csv_path,index=False)
 
         lr = self.lr
         loss = self._get_loss(loss_fun, class_weight)
@@ -261,8 +266,10 @@ class SemanticSeg(object):
             # early_stopping(val_loss)
             early_stopping(val_dice)
             #save
-            if val_loss <= self.loss_threshold:
-                self.loss_threshold = val_loss
+            # if val_loss <= self.loss_threshold:
+            if val_dice > self.metric_threshold:
+                # self.loss_threshold = val_loss
+                self.metric_threshold = val_dice
         
                 if len(self.device.split(',')) > 1:
                     state_dict = net.module.state_dict()
@@ -289,8 +296,9 @@ class SemanticSeg(object):
             if early_stopping.early_stop:
                 print('Early Stopping!')
                 break
-
+      
         self.writer.close()
+
 
     def _train_on_epoch(self, epoch, net, criterion, optimizer, train_loader, scaler):
 
@@ -334,8 +342,14 @@ class SemanticSeg(object):
             cls_output = torch.sigmoid(cls_output).float()
 
             seg_output = output[0].float() #N*C*H*W
+            
+            if self.statistic_threshold:
+                # measure threshold dice
+                threshold_dice, threshold = compute_dice_threshold(seg_output.detach(), target)
+                df = pd.DataFrame(data=[threshold])
+                df.to_csv(self.csv_path,mode='a',header=False,index=False)
+            
             seg_output = F.softmax(seg_output, dim=1)
-
             loss = loss.float()
 
             # measure acc
@@ -361,6 +375,8 @@ class SemanticSeg(object):
                     rundice, dice_list = run_dice.compute_dice() 
                     print("Category Dice: ", dice_list)
                     print('epoch:{},step:{},train_loss:{:.5f},train_dice:{:.5f},run_dice:{:.5f},lr:{}'.format(epoch, step, loss.item(), dice.item(), rundice, optimizer.param_groups[0]['lr']))
+                    if self.statistic_threshold:
+                        print('epoch:{},step:{},threshold_dice:{:.5f}'.format(epoch, step, threshold_dice))
                     run_dice.init_op()
                 else:
                     print('epoch:{},step:{},train_loss:{:.5f},train_dice:{:.5f},train_acc:{:.5f},lr:{}'.format(epoch, step, loss.item(), dice.item(),acc.item(), optimizer.param_groups[0]['lr']))
@@ -437,8 +453,14 @@ class SemanticSeg(object):
                 cls_output = torch.sigmoid(cls_output).float()
 
                 seg_output = output[0].float()
-                seg_output = F.softmax(seg_output, dim=1)
 
+                if self.statistic_threshold:
+                    # measure threshold dice
+                    threshold_dice, threshold = compute_dice_threshold(seg_output.detach(), target)
+                    df = pd.DataFrame(data=[threshold])
+                    df.to_csv(self.csv_path,mode='a',header=False,index=False)
+
+                seg_output = F.softmax(seg_output, dim=1)
                 loss = loss.float()
 
                 # measure acc
@@ -464,6 +486,8 @@ class SemanticSeg(object):
                         rundice, dice_list = run_dice.compute_dice() 
                         print("Category Dice: ", dice_list)
                         print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f},rundice:{:.5f}'.format(epoch, step, loss.item(), dice.item(),rundice))
+                        if self.statistic_threshold:
+                            print('epoch:{},step:{},threshold_dice:{:.5f}'.format(epoch, step, threshold_dice))
                         run_dice.init_op()
                     else:
                         print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f},val_acc:{:.5f}'.format(epoch, step, loss.item(), dice.item(), acc.item()))
@@ -659,13 +683,9 @@ class SemanticSeg(object):
         if loss_fun == 'Cross_Entropy':
             from loss.cross_entropy import CrossentropyLoss
             loss = CrossentropyLoss(weight=class_weight)
-        if loss_fun == 'DynamicTopKLoss':
+        elif loss_fun == 'DynamicTopKLoss':
             from loss.cross_entropy import DynamicTopKLoss
             loss = DynamicTopKLoss(weight=class_weight,step_threshold=self.step_pre_epoch)
-        
-        elif loss_fun == 'DynamicTopkCEPlusDice':
-            from loss.combine_loss import DynamicTopkCEPlusDice
-            loss = DynamicTopkCEPlusDice(weight=class_weight, ignore_index=0, step_threshold=self.step_pre_epoch)
         
         elif loss_fun == 'TopKLoss':
             from loss.cross_entropy import TopKLoss
@@ -674,16 +694,6 @@ class SemanticSeg(object):
         elif loss_fun == 'DiceLoss':
             from loss.dice_loss import DiceLoss
             loss = DiceLoss(weight=class_weight, ignore_index=0, p=1)
-        elif loss_fun == 'ShiftDiceLoss':
-            from loss.dice_loss import ShiftDiceLoss
-            loss = ShiftDiceLoss(weight=class_weight,ignore_index=0, reduction='topk',shift=0.5, p=1, k=self.topk)
-        elif loss_fun == 'TopkDiceLoss':
-            from loss.dice_loss import DiceLoss
-            loss = DiceLoss(weight=class_weight, ignore_index=0,reduction='topk', k=self.topk)
-
-        elif loss_fun == 'PowDiceLoss':
-            from loss.dice_loss import DiceLoss
-            loss = DiceLoss(weight=class_weight, ignore_index=0, p=2)
         
         elif loss_fun == 'TverskyLoss':
             from loss.tversky_loss import TverskyLoss
@@ -704,25 +714,17 @@ class SemanticSeg(object):
             from loss.combine_loss import CEPlusDice
             loss = CEPlusDice(weight=class_weight, ignore_index=0)
         
-        elif loss_fun == 'CEPlusTopkDice':
-            from loss.combine_loss import CEPlusTopkDice
-            loss = CEPlusTopkDice(weight=class_weight, ignore_index=0, reduction='topk', k=self.topk)
-        
-        elif loss_fun == 'TopkCEPlusTopkDice':
-            from loss.combine_loss import TopkCEPlusTopkDice
-            loss = TopkCEPlusTopkDice(weight=class_weight, ignore_index=0, reduction='topk', k=self.topk)
-        
         elif loss_fun == 'TopkCEPlusDice':
             from loss.combine_loss import TopkCEPlusDice
             loss = TopkCEPlusDice(weight=class_weight, ignore_index=0, k=self.topk)
         
-        elif loss_fun == 'TopkCEPlusShiftDice':
-            from loss.combine_loss import TopkCEPlusShiftDice
-            loss = TopkCEPlusShiftDice(weight=class_weight,ignore_index=0, shift=0.5,k=self.topk)
+        elif loss_fun == 'BCELoss':
+            from loss.cross_entropy import BCELoss
+            loss = BCELoss(weight=class_weight)
         
-        elif loss_fun == 'TopkCEPlusTopkShiftDice':
-            from loss.combine_loss import TopkCEPlusTopkShiftDice
-            loss = TopkCEPlusTopkShiftDice(weight=class_weight,ignore_index=0, reduction='topk',shift=0.5,k=self.topk)
+        elif loss_fun == 'TopKBCELoss':
+            from loss.cross_entropy import TopKBCELoss
+            loss = TopKBCELoss(weight=class_weight, k=self.topk)
         
         return loss
 
@@ -813,39 +815,8 @@ def binary_dice(predict, target, smooth=1e-5):
 
     return dice.mean()
 
-'''
-def compute_dice(predict, target, ignore_index=0, shift=0.5):
-    """
-    Compute dice
-    Args:
-        predict: A tensor of shape [N, C, *]
-        target: A tensor of same shape with predict
-        ignore_index: class index to ignore
-    Return:
-        mean dice over the batch
-    """
-    assert predict.shape == target.shape, 'predict & target shape do not match'
 
-    predict_shift = F.relu(predict-shift)
-    alpha = predict / (predict-shift)
-    alpha_relu = F.relu(alpha)
-    predict = predict_shift * alpha_relu
 
-    total_dice = 0.
-    dice_list = []
-    for i in range(target.shape[1]):
-        if i != ignore_index:
-            dice = binary_dice(predict[:, i], target[:, i])
-            # print(dice)
-            total_dice += dice
-            dice_list.append(round(dice.item(),4))
-    # print(dice_list)
-
-    if ignore_index is not None:
-        return total_dice / (target.shape[1] - 1)
-    else:
-        return total_dice / target.shape[1]
-'''
 def compute_dice(predict,target,ignore_index=0):
     """
     Compute dice
@@ -857,25 +828,86 @@ def compute_dice(predict,target,ignore_index=0):
         mean dice over the batch
     """
     assert predict.shape == target.shape, 'predict & target shape do not match'
-    total_dice = 0.
-    # predict = F.softmax(predict, dim=1)
 
     onehot_predict = torch.argmax(predict,dim=1)#N*H*W
     onehot_target = torch.argmax(target,dim=1) #N*H*W
 
-    dice_list = []
+    dice_list = -1.0 * np.zeros((target.shape[1]),dtype=np.float32)
     for i in range(target.shape[1]):
         if i != ignore_index:
-            # dice = binary_dice(predict[:, i], target[:, i])
+            if i not in onehot_predict and i not in onehot_target:
+                continue
             dice = binary_dice((onehot_predict==i).float(), (onehot_target==i).float())
-            total_dice += dice
-            dice_list.append(round(dice.item(),4))
+            dice_list[i] = round(dice.item(),4)
+    dice_list = np.where(dice_list == -1.0, np.nan, dice_list)
+    
     # print(dice_list)
 
-    if ignore_index is not None:
-        return total_dice/(target.shape[1] - 1)
-    else:
-        return total_dice/target.shape[1]
+    return np.nanmean(dice_list[1:])
+
+
+
+
+def binary_dice_threshold(predict, target, smooth=1e-5, threshold_gap=0.05, min_threshold=0.2, max_threshold=0.8):
+    """Dice of binary class
+    Args:
+        smooth: A float number to smooth loss, and avoid NaN error, default: 1e-5
+        predict: A tensor of shape [N, *]
+        target: A tensor of shape same with predict
+    Returns:
+        dice according to arg reduction
+    Raise:
+        Exception if unexpected reduction
+    """
+    threshold_list = [round((min_threshold + i*threshold_gap),3) for i in range(int((max_threshold-min_threshold)/threshold_gap)+1)]
+    assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
+    target = target.contiguous().view(target.shape[0], -1)
+    dice_list = -1.0 * torch.ones((len(threshold_list)))
+
+    for i,threshold in enumerate(threshold_list):
+        tmp_predict = (predict >= threshold).float()
+        tmp_predict = tmp_predict.contiguous().view(tmp_predict.shape[0], -1)
+        inter = torch.sum(torch.mul(tmp_predict, target), dim=1)
+        union = torch.sum(tmp_predict + target, dim=1)
+        if union == 0.:
+            continue
+
+        dice = (2 * inter + smooth) / (union + smooth)
+        dice_list[i] = dice.mean()
+
+    max_dice = torch.max(dice_list)
+    best_threshold = threshold_list[torch.argmax(dice_list).item()]
+    return max_dice,best_threshold
+
+
+def compute_dice_threshold(predict,target,ignore_index=0):
+    """
+    Compute dice
+    Args:
+        predict: A tensor of shape [N, C, *]
+        target: A tensor of same shape with predict
+        ignore_index: class index to ignore
+    Return:
+        mean dice over the batch
+    """
+    assert predict.shape == target.shape, 'predict & target shape do not match'
+  
+    predict = torch.sigmoid(predict).float()
+
+    dice_list = -1.0 * np.zeros((target.shape[1]),dtype=np.float32)
+    threshold_list = -1.0 * np.zeros((target.shape[1]),dtype=np.float32)
+    for i in range(target.shape[1]):
+        if i != ignore_index:
+            dice, threshold = binary_dice_threshold(predict[:,i], target[:,i])
+            dice_list[i] = round(dice.item(),4)
+            threshold_list[i] = round(threshold,3)
+    dice_list = np.where(dice_list == -1.0, np.nan, dice_list)
+    threshold_list = np.where(threshold_list == -1.0, np.nan, threshold_list)
+    # print(dice_list)
+    # print(threshold_list)
+    return np.nanmean(dice_list[1:]),list(threshold_list[1:])
+
+
 
 def accuracy(output, target):
     '''

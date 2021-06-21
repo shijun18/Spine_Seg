@@ -9,7 +9,7 @@ from utils import get_weight_path
 
 __disease__ = ['Spine']
 __net__ = ['unet','unet++','FPN','deeplabv3+','swin_trans_unet']
-__encoder_name__ = [None,'resnet18','resne34','resnet50','se_resnet50','resnext50_32x4d', 'timm-resnest14d','timm-resnest26d','timm-resnest50d', \
+__encoder_name__ = [None,'resnet18','resnet34','resnet50','se_resnet50','resnext50_32x4d', 'timm-resnest14d','timm-resnest26d','timm-resnest50d', \
                     'efficientnet-b4', 'efficientnet-b5','efficientnet-b6','efficientnet-b7']
 
 __mode__ = ['cls','seg','mtl']
@@ -23,7 +23,7 @@ DISEASE = 'Spine'
 MODE = 'seg'
 NET_NAME = 'deeplabv3+'
 ENCODER_NAME = 'efficientnet-b5'
-VERSION = 'v4.10-all'
+VERSION = 'v4.10.0-all'
 
 with open(json_path[DISEASE], 'r') as fp:
     info = json.load(fp)
@@ -47,8 +47,8 @@ GPU_NUM = len(DEVICE.split(','))
 # ROI_NUMBER = None
 # ROI_NUMBER = [1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18]# or [1-N]
 # ROI_NUMBER = [1,2,3,4,5,6,7,8,11,12,13,14,15,16,17]# or [1-N]
-ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
-# ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
+# ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
+ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
 # ROI_NUMBER = [9,10,18,19]
 # ROI_NUMBER = [10,19]
 
@@ -71,6 +71,7 @@ STD = info['mean_std']['std']
 #--------------------------------- mode and data path setting
 #all
 PATH_LIST = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
+PATH_LIST += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
 
 #zero
 # PATH_LIST = get_path_with_annotation(info['2d_data']['csv_path'],'path',ROI_NAME)
@@ -114,19 +115,19 @@ INIT_TRAINER = {
   'weight_decay': 0.0001,
   'momentum': 0.99,
   'gamma': 0.1,
-  'milestones': [40,80],
+  'milestones': [20,40,60],
   'T_max':5,
   'mean':MEAN,
   'std':STD,
   'mode':MODE,
   'topk':20,
   'freeze':None,
-  'use_fp16':True #False if the machine you used without tensor core
+  'use_fp16':True, #False if the machine you used without tensor core
+  'statistic_threshold':False
  }
 #---------------------------------
 
-__seg_loss__ = ['DiceLoss','TverskyLoss','FocalTverskyLoss','TopkCEPlusDice','DynamicTopkCEPlusDice','TopkCEPlusTopkShiftDice','TopkCEPlusShiftDice','PowDiceLoss',\
-                'Cross_Entropy','TopkDiceLoss','DynamicTopKLoss','TopKLoss','CEPlusDice','TopkCEPlusDice','CEPlusTopkDice','TopkCEPlusTopkDice']
+__seg_loss__ = ['TopKLoss','DiceLoss','Cross_Entropy','BCELoss','TopKBCELoss','DynamicTopKLoss','CEPlusDice','TopkCEPlusDice']
 __cls_loss__ = ['BCEWithLogitsLoss']
 __mtl_loss__ = ['BCEPlusDice']
 # Arguments when perform the trainer 
@@ -134,18 +135,23 @@ __mtl_loss__ = ['BCEPlusDice']
 if MODE == 'cls':
     LOSS_FUN = 'BCEWithLogitsLoss'
 elif MODE == 'seg' :
-    LOSS_FUN = 'TopkCEPlusDice'
-    # LOSS_FUN = 'TopKLoss'
+    LOSS_FUN = 'TopKLoss'
+    # LOSS_FUN = 'DiceLoss'
+    # LOSS_FUN = 'Cross_Entropy'
+    # LOSS_FUN = 'BCELoss'
+    # LOSS_FUN = 'TopKBCELoss'
+    # LOSS_FUN = 'TopkCEPlusDice'
 else:
     LOSS_FUN = 'BCEPlusDice'
 
 SETUP_TRAINER = {
   'output_dir':'./ckpt/{}/{}/{}/{}'.format(DISEASE,MODE,VERSION,ROI_NAME),
   'log_dir':'./log/{}/{}/{}/{}'.format(DISEASE,MODE,VERSION,ROI_NAME), 
+  'csv_path':'./csv_file/{}/{}/{}/{}'.format(DISEASE,VERSION,ROI_NAME), 
   'optimizer':'Adam',
   'loss_fun':LOSS_FUN,
   'class_weight':None, #[1,4]
-  'lr_scheduler':'CosineAnnealingWarmRestarts', #'CosineAnnealingLR','MultiStepLR'
+  'lr_scheduler':'MultiStepLR', #'CosineAnnealingLR','MultiStepLR'
   }
 #---------------------------------
 TEST_PATH = None

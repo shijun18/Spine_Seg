@@ -1,9 +1,12 @@
+from config import PATH_LIST
+from os import path
 import sys
 sys.path.append('..')
 
 from torch.utils.data import Dataset
 import torch
 import numpy as np
+import random
 from utils import hdf5_reader
 from skimage.transform import resize
 import cv2
@@ -154,6 +157,62 @@ class DataGenerator(Dataset):
         # Get image and mask
         image = hdf5_reader(self.path_list[index],'image')
         mask = hdf5_reader(self.path_list[index],'label')
+
+        if self.roi_number is not None:
+            if isinstance(self.roi_number,list):
+                tmp_mask = np.zeros_like(mask,dtype=np.float32)
+                assert self.num_class == len(self.roi_number) + 1
+                for i, roi in enumerate(self.roi_number):
+                    tmp_mask[mask == roi] = i+1
+                mask = tmp_mask
+            else:
+                assert self.num_class == 2
+                mask = (mask == self.roi_number).astype(np.float32)
+
+        sample = {'image': image, 'mask': mask}
+        if self.transform is not None:
+            sample = self.transform(sample)
+
+        label = np.zeros((self.num_class, ), dtype=np.float32)
+        label_array = np.argmax(sample['mask'].numpy(),axis=0)
+        label[np.unique(label_array).astype(np.uint8)] = 1
+
+        sample['label'] = torch.Tensor(list(label[1:]))
+
+        return sample
+
+
+class BalanceDataGenerator(Dataset):
+    '''
+    Custom Dataset class for data loader.
+    Args：
+    - path_list: list of two lists, one includes positive samples, and the other includes negative samples
+    - roi_number: integer or None, to extract the corresponding label
+    - num_class: the number of classes of the label
+    - transform: the data augmentation methods
+    '''
+    def __init__(self,
+                 path_list=None,
+                 roi_number=None,
+                 num_class=2,
+                 transform=None):
+
+        self.path_list = path_list
+        self.roi_number = roi_number
+        self.num_class = num_class
+        self.transform = transform
+
+
+    def __len__(self):
+        assert len(self.path_list) == 2
+        return sum([len(case) for case in self.path_list])
+
+    def __getitem__(self, index):
+        # balance sampler
+        item_path = random.choice(self.path_list[int(random.random() < 0.3)])
+        # Get image and mask
+        image = hdf5_reader(item_path,'image')
+        mask = hdf5_reader(item_path,'label')
 
         if self.roi_number is not None:
             if isinstance(self.roi_number,list):
