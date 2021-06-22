@@ -171,7 +171,13 @@ class SemanticSeg(object):
         net = self.net
 
         if self.statistic_threshold:
-            self.csv_path = os.path.join(csv_path,'threshold.csv')
+            if os.path.exists(csv_path):
+                if not self.pre_trained:
+                    shutil.rmtree(csv_path)
+                    os.makedirs(csv_path)
+            else:
+                os.makedirs(csv_path)
+            self.csv_path = os.path.join(csv_path,f'fold{cur_fold}_threshold.csv')
             col = ['epoch','step'] + [str(case) for case in range(1,self.num_classes)]
             df = pd.DataFrame(columns=col)
             df.to_csv(self.csv_path,index=False)
@@ -231,8 +237,6 @@ class SemanticSeg(object):
 
         if lr_scheduler is not None:
             lr_scheduler = self._get_lr_scheduler(lr_scheduler, optimizer)
-
-        # loss_threshold = 1.0
 
         # early_stopping = EarlyStopping(patience=20,verbose=True,monitor='val_loss',op_type='min')
         early_stopping = EarlyStopping(patience=20,verbose=True,monitor='val_dice',op_type='max')
@@ -869,7 +873,7 @@ def binary_dice_threshold(predict, target, smooth=1e-5, threshold_gap=0.05, min_
         tmp_predict = tmp_predict.contiguous().view(tmp_predict.shape[0], -1)
         inter = torch.sum(torch.mul(tmp_predict, target), dim=1)
         union = torch.sum(tmp_predict + target, dim=1)
-        if union == 0.:
+        if torch.sum(union) == 0.:
             continue
 
         dice = (2 * inter + smooth) / (union + smooth)

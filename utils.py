@@ -172,5 +172,5 @@ def dfs_remove_weight(ckpt_path):
 
 if __name__ == "__main__":
 
-    ckpt_path = './ckpt/Spine/seg/v4.3.1-all'
+    ckpt_path = './ckpt/Spine/seg/'
     dfs_remove_weight(ckpt_path)

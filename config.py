@@ -23,7 +23,7 @@ DISEASE = 'Spine'
 MODE = 'seg'
 NET_NAME = 'deeplabv3+'
 ENCODER_NAME = 'efficientnet-b5'
-VERSION = 'v4.10.0-all'
+VERSION = 'v4.10-all'
 
 with open(json_path[DISEASE], 'r') as fp:
     info = json.load(fp)
@@ -47,8 +47,8 @@ GPU_NUM = len(DEVICE.split(','))
 # ROI_NUMBER = None
 # ROI_NUMBER = [1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18]# or [1-N]
 # ROI_NUMBER = [1,2,3,4,5,6,7,8,11,12,13,14,15,16,17]# or [1-N]
-# ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
-ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
+ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
+# ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
 # ROI_NUMBER = [9,10,18,19]
 # ROI_NUMBER = [10,19]
 
@@ -123,7 +123,7 @@ INIT_TRAINER = {
   'topk':20,
   'freeze':None,
   'use_fp16':True, #False if the machine you used without tensor core
-  'statistic_threshold':False
+  'statistic_threshold':True
  }
 #---------------------------------
 
@@ -147,7 +147,7 @@ else:
 SETUP_TRAINER = {
   'output_dir':'./ckpt/{}/{}/{}/{}'.format(DISEASE,MODE,VERSION,ROI_NAME),
   'log_dir':'./log/{}/{}/{}/{}'.format(DISEASE,MODE,VERSION,ROI_NAME), 
-  'csv_path':'./csv_file/{}/{}/{}/{}'.format(DISEASE,VERSION,ROI_NAME), 
+  'csv_path':'./csv_file/{}/{}/{}'.format(DISEASE,VERSION,ROI_NAME), 
   'optimizer':'Adam',
   'loss_fun':LOSS_FUN,
   'class_weight':None, #[1,4]
