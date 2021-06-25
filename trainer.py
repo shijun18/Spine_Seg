@@ -178,13 +178,14 @@ class SemanticSeg(object):
         net = self.net
 
         if self.statistic_threshold:
+            csv_path = os.path.join(csv_path, "fold" + str(cur_fold))
             if os.path.exists(csv_path):
                 if not self.pre_trained:
                     shutil.rmtree(csv_path)
                     os.makedirs(csv_path)
             else:
                 os.makedirs(csv_path)
-            self.csv_path = os.path.join(csv_path,f'fold{cur_fold}_threshold.csv')
+            self.csv_path = os.path.join(csv_path,'threshold.csv')
             col = ['epoch','step'] + [str(case) for case in range(1,self.num_classes)]
             df = pd.DataFrame(columns=col)
             df.to_csv(self.csv_path,index=False)

@@ -135,7 +135,7 @@ if __name__ == "__main__":
     # Training
     ###############################################
     if args.mode == 'train-cross':
-        for current_fold in range(2, FOLD_NUM + 1):
+        for current_fold in range(1, FOLD_NUM + 1):
             print("=== Training Fold ", current_fold, " ===")
             segnetwork = SemanticSeg(**INIT_TRAINER)
             print(get_parameter_number(segnetwork.net))
