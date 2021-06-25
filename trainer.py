@@ -403,7 +403,7 @@ class SemanticSeg(object):
             self.global_step += 1
 
         return train_loss.avg, run_dice.compute_dice()[0], train_acc.avg
-        return train_loss.avg, train_dice.avg, train_acc.avg
+        #return train_loss.avg, train_dice.avg, train_acc.avg
 
     def _val_on_epoch(self, epoch, net, criterion, val_path, val_transformer=None):
 
