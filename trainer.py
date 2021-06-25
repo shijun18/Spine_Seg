@@ -381,7 +381,7 @@ class SemanticSeg(object):
                     print('epoch:{},step:{},train_loss:{:.5f},train_dice:{:.5f},run_dice:{:.5f},lr:{}'.format(epoch, step, loss.item(), dice.item(), rundice, optimizer.param_groups[0]['lr']))
                     if self.statistic_threshold:
                         print('epoch:{},step:{},threshold_dice:{:.5f}'.format(epoch, step, threshold_dice))
-                    run_dice.init_op()
+                    # run_dice.init_op()
                 else:
                     print('epoch:{},step:{},train_loss:{:.5f},train_dice:{:.5f},train_acc:{:.5f},lr:{}'.format(epoch, step, loss.item(), dice.item(),acc.item(), optimizer.param_groups[0]['lr']))
 
@@ -492,7 +492,7 @@ class SemanticSeg(object):
                         print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f},rundice:{:.5f}'.format(epoch, step, loss.item(), dice.item(),rundice))
                         if self.statistic_threshold:
                             print('epoch:{},step:{},threshold_dice:{:.5f}'.format(epoch, step, threshold_dice))
-                        run_dice.init_op()
+                        # run_dice.init_op()
                     else:
                         print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f},val_acc:{:.5f}'.format(epoch, step, loss.item(), dice.item(), acc.item()))
 
