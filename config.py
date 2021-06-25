@@ -28,7 +28,7 @@ VERSION = 'v4.10-balance'
 with open(json_path[DISEASE], 'r') as fp:
     info = json.load(fp)
 
-DEVICE = '0'
+DEVICE = '1'
 # True if use internal pre-trained model
 # Must be True when pre-training and inference
 PRE_TRAINED = False
@@ -69,44 +69,39 @@ STD = info['mean_std']['std']
 #---------------------------------
 
 #--------------------------------- mode and data path setting
-#all
-# PATH_LIST = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
-# PATH_LIST += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
+
+if 'all' in VERSION:
+    #all
+    PATH_LIST = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
+    PATH_LIST += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
 
 #balance
-'''
-PATH_LIST = []
-alpha_list = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
-alpha_list += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
 
-beta_list = get_path_with_annotation(info['2d_data']['csv_path'],'path','T9')
-beta_list += get_path_with_annotation(info['2d_data']['test_csv_path'],'path','T9')
+elif 'balance' in VERSION:
+    if ROI_NAME == 'Part_10':
+        PATH_LIST = []
+        alpha_list = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
+        alpha_list += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
 
-alpha_list = [case for case in alpha_list if case not in beta_list]
-PATH_LIST.append(alpha_list)
-PATH_LIST.append(beta_list)
-'''
-PATH_LIST = []
-alpha_list = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
-alpha_list += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
+        beta_list = get_path_with_annotation(info['2d_data']['csv_path'],'path','T9')
+        beta_list += get_path_with_annotation(info['2d_data']['test_csv_path'],'path','T9')
 
-beta_list = get_path_with_annotation(info['2d_data']['csv_path'],'path','T9/T10')
-beta_list += get_path_with_annotation(info['2d_data']['test_csv_path'],'path','T9/T10')
+        alpha_list = [case for case in alpha_list if case not in beta_list]
+        PATH_LIST.append(alpha_list)
+        PATH_LIST.append(beta_list)
+    
+    elif ROI_NAME == 'Part_9':
+        PATH_LIST = []
+        alpha_list = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
+        alpha_list += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
 
-alpha_list = [case for case in alpha_list if case not in beta_list]
-PATH_LIST.append(alpha_list)
-PATH_LIST.append(beta_list)
+        beta_list = get_path_with_annotation(info['2d_data']['csv_path'],'path','T9/T10')
+        beta_list += get_path_with_annotation(info['2d_data']['test_csv_path'],'path','T9/T10')
 
-#zero
-# PATH_LIST = get_path_with_annotation(info['2d_data']['csv_path'],'path',ROI_NAME)
+        alpha_list = [case for case in alpha_list if case not in beta_list]
+        PATH_LIST.append(alpha_list)
+        PATH_LIST.append(beta_list)
 
-
-#half
-# PATH_LIST = get_path_with_annotation_ratio(info['2d_data']['csv_path'],'path','T9/T10',ratio=0.5)
-
-
-#equal
-# PATH_LIST = get_path_with_annotation_ratio(info['2d_data']['csv_path'],'path','T9/T10',ratio=1)
 #---------------------------------
 
 

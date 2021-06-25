@@ -163,10 +163,17 @@ class SemanticSeg(object):
                 os.makedirs(output_dir)
         else:
             os.makedirs(output_dir)
-        self.step_pre_epoch = len(train_path) // self.batch_size
+        
+
         self.writer = SummaryWriter(log_dir)
-        self.global_step = self.start_epoch * math.ceil(
-            len(train_path[0]) / self.batch_size)
+
+        if isinstance(train_path[0],list):
+            data_len = sum([len(case) for case in train_path])
+        else:
+            data_len = len(train_path)
+        self.step_pre_epoch = data_len // self.batch_size
+        self.global_step = self.start_epoch * math.ceil(data_len / self.batch_size)
+
 
         net = self.net
 
@@ -271,8 +278,8 @@ class SemanticSeg(object):
             early_stopping(val_dice)
             #save
             # if val_loss <= self.loss_threshold:
-            if val_dice > self.metric_threshold:
                 # self.loss_threshold = val_loss
+            if val_dice > self.metric_threshold:
                 self.metric_threshold = val_dice
         
                 if len(self.device.split(',')) > 1:
@@ -394,6 +401,7 @@ class SemanticSeg(object):
 
             self.global_step += 1
 
+        return train_loss.avg, run_dice.compute_dice()[0], train_acc.avg
         return train_loss.avg, train_dice.avg, train_acc.avg
 
     def _val_on_epoch(self, epoch, net, criterion, val_path, val_transformer=None):
@@ -496,7 +504,8 @@ class SemanticSeg(object):
                     else:
                         print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f},val_acc:{:.5f}'.format(epoch, step, loss.item(), dice.item(), acc.item()))
 
-        return val_loss.avg, val_dice.avg, val_acc.avg
+        return val_loss.avg, run_dice.compute_dice()[0], val_acc.avg
+        # return val_loss.avg, val_dice.avg, val_acc.avg
 
     def test(self, test_path, save_path=None, net=None, mode='seg', save_flag=False):
         if net is None:

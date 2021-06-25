@@ -195,22 +195,24 @@ class BalanceDataGenerator(Dataset):
                  path_list=None,
                  roi_number=None,
                  num_class=2,
-                 transform=None):
+                 transform=None,
+                 factor=0.3):
 
         self.path_list = path_list
         self.roi_number = roi_number
         self.num_class = num_class
         self.transform = transform
+        self.factor = factor
 
 
     def __len__(self):
-        assert isinstance(self.path_list,list)
+        assert isinstance(self.path_list[0],list)
         assert len(self.path_list) == 2
         return sum([len(case) for case in self.path_list])
 
     def __getitem__(self, index):
         # balance sampler
-        item_path = random.choice(self.path_list[int(random.random() < 0.3)])
+        item_path = random.choice(self.path_list[int(random.random() < self.factor)])
         # Get image and mask
         image = hdf5_reader(item_path,'image')
         mask = hdf5_reader(item_path,'label')

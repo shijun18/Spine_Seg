@@ -152,7 +152,7 @@ def get_weight_path(ckpt_path):
     
     
 
-def remove_weight_path(ckpt_path,retain=10):
+def remove_weight_path(ckpt_path,retain=1):
 
     if os.path.isdir(ckpt_path):
         pth_list = os.listdir(ckpt_path)
@@ -172,5 +172,5 @@ def dfs_remove_weight(ckpt_path):
 
 if __name__ == "__main__":
 
-    ckpt_path = './ckpt/Spine/seg/'
+    ckpt_path = './ckpt/Spine/seg/v4.10-balance/Part_9/fold1'
     dfs_remove_weight(ckpt_path)
