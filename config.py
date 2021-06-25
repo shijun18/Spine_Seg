@@ -23,12 +23,12 @@ DISEASE = 'Spine'
 MODE = 'seg'
 NET_NAME = 'deeplabv3+'
 ENCODER_NAME = 'efficientnet-b5'
-VERSION = 'v4.10-all'
+VERSION = 'v4.10-balance'
 
 with open(json_path[DISEASE], 'r') as fp:
     info = json.load(fp)
 
-DEVICE = '1'
+DEVICE = '0'
 # True if use internal pre-trained model
 # Must be True when pre-training and inference
 PRE_TRAINED = False
@@ -47,8 +47,8 @@ GPU_NUM = len(DEVICE.split(','))
 # ROI_NUMBER = None
 # ROI_NUMBER = [1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18]# or [1-N]
 # ROI_NUMBER = [1,2,3,4,5,6,7,8,11,12,13,14,15,16,17]# or [1-N]
-ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
-# ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
+# ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
+ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
 # ROI_NUMBER = [9,10,18,19]
 # ROI_NUMBER = [10,19]
 
@@ -70,8 +70,32 @@ STD = info['mean_std']['std']
 
 #--------------------------------- mode and data path setting
 #all
-PATH_LIST = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
-PATH_LIST += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
+# PATH_LIST = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
+# PATH_LIST += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
+
+#balance
+'''
+PATH_LIST = []
+alpha_list = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
+alpha_list += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
+
+beta_list = get_path_with_annotation(info['2d_data']['csv_path'],'path','T9')
+beta_list += get_path_with_annotation(info['2d_data']['test_csv_path'],'path','T9')
+
+alpha_list = [case for case in alpha_list if case not in beta_list]
+PATH_LIST.append(alpha_list)
+PATH_LIST.append(beta_list)
+'''
+PATH_LIST = []
+alpha_list = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
+alpha_list += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
+
+beta_list = get_path_with_annotation(info['2d_data']['csv_path'],'path','T9/T10')
+beta_list += get_path_with_annotation(info['2d_data']['test_csv_path'],'path','T9/T10')
+
+alpha_list = [case for case in alpha_list if case not in beta_list]
+PATH_LIST.append(alpha_list)
+PATH_LIST.append(beta_list)
 
 #zero
 # PATH_LIST = get_path_with_annotation(info['2d_data']['csv_path'],'path',ROI_NAME)
@@ -88,7 +112,7 @@ PATH_LIST += glob.glob(os.path.join(info['2d_data']['test_path'],'*.hdf5'))
 
 #--------------------------------- others
 INPUT_SHAPE = (512,512)
-BATCH_SIZE = 16
+BATCH_SIZE = 24
 
 CKPT_PATH = './ckpt/{}/{}/{}/{}/fold{}'.format(DISEASE,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
 

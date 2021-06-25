@@ -135,11 +135,12 @@ if __name__ == "__main__":
     # Training
     ###############################################
     if args.mode == 'train-cross':
-        for current_fold in range(2, FOLD_NUM + 1):
+        for current_fold in range(1, FOLD_NUM + 1):
             print("=== Training Fold ", current_fold, " ===")
             segnetwork = SemanticSeg(**INIT_TRAINER)
             print(get_parameter_number(segnetwork.net))
-            train_path, val_path = get_cross_validation_by_sample(path_list, FOLD_NUM, current_fold)
+            # train_path, val_path = get_cross_validation_by_sample(path_list, FOLD_NUM, current_fold)
+            train_path, val_path = get_cross_validation_by_sample_balance(path_list, FOLD_NUM, current_fold)
             SETUP_TRAINER['train_path'] = train_path
             SETUP_TRAINER['val_path'] = val_path
             SETUP_TRAINER['cur_fold'] = current_fold
@@ -151,7 +152,7 @@ if __name__ == "__main__":
 
     if args.mode == 'train':
         train_path, val_path = get_cross_validation_by_sample(path_list, FOLD_NUM, CURRENT_FOLD)
-        
+        # train_path, val_path = get_cross_validation_by_sample_balance(path_list, FOLD_NUM, CURRENT_FOLD)
         SETUP_TRAINER['train_path'] = train_path
         SETUP_TRAINER['val_path'] = val_path
         SETUP_TRAINER['cur_fold'] = CURRENT_FOLD

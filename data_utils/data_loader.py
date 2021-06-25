@@ -204,6 +204,7 @@ class BalanceDataGenerator(Dataset):
 
 
     def __len__(self):
+        assert isinstance(self.path_list,list)
         assert len(self.path_list) == 2
         return sum([len(case) for case in self.path_list])
 

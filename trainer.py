@@ -14,8 +14,8 @@ from torch.nn import functional as F
 
 from data_utils.transformer import RandomFlip2D, RandomRotate2D, RandomErase2D,RandomZoom2D,RandomAdjust2D,RandomNoise2D,RandomDistort2D
 from data_utils.data_loader import To_Tensor, CropResize, Normalize
-from data_utils.data_loader import DataGenerator as DataGenerator
-
+# from data_utils.data_loader import DataGenerator as DataGenerator
+from data_utils.data_loader import BalanceDataGenerator as DataGenerator
 from torch.cuda.amp import autocast as autocast
 
 import torch.distributed as dist
@@ -836,7 +836,7 @@ def compute_dice(predict,target,ignore_index=0):
     onehot_predict = torch.argmax(predict,dim=1)#N*H*W
     onehot_target = torch.argmax(target,dim=1) #N*H*W
 
-    dice_list = -1.0 * np.zeros((target.shape[1]),dtype=np.float32)
+    dice_list = -1.0 * np.ones((target.shape[1]),dtype=np.float32)
     for i in range(target.shape[1]):
         if i != ignore_index:
             if i not in onehot_predict and i not in onehot_target:
@@ -898,8 +898,8 @@ def compute_dice_threshold(predict,target,ignore_index=0):
   
     predict = torch.sigmoid(predict).float()
 
-    dice_list = -1.0 * np.zeros((target.shape[1]),dtype=np.float32)
-    threshold_list = -1.0 * np.zeros((target.shape[1]),dtype=np.float32)
+    dice_list = -1.0 * np.ones((target.shape[1]),dtype=np.float32)
+    threshold_list = -1.0 * np.ones((target.shape[1]),dtype=np.float32)
     for i in range(target.shape[1]):
         if i != ignore_index:
             dice, threshold = binary_dice_threshold(predict[:,i], target[:,i])
