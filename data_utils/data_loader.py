@@ -1,3 +1,4 @@
+from numpy.lib.function_base import append
 from config import PATH_LIST
 from os import path
 import sys
@@ -13,6 +14,27 @@ import cv2
 from scipy.ndimage.interpolation import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
 
+
+
+def data_pre_loader(data_path,resize=False,dim=None,num_class=None):
+    image = []
+    label = []
+    for item in data_path:
+        img = hdf5_reader(item,'image')
+        lab = hdf5_reader(item,'label')
+        if resize:
+            if dim is not None and img.shape != dim:
+                img = resize(img, dim, anti_aliasing=True)
+                temp_lab = np.zeros(dim,dtype=np.float32)
+                for z in range(1, num_class):
+                    roi = resize((lab == z).astype(np.float32),dim,mode='constant')
+                    temp_lab[roi >= 0.5] = z
+                lab = temp_lab
+            
+        image.append(img)
+        label.append(lab)
+
+    return image,label
 
 
 class Normalize(object):
@@ -142,21 +164,31 @@ class DataGenerator(Dataset):
                  path_list=None,
                  roi_number=None,
                  num_class=2,
-                 transform=None):
+                 input_shape=None,
+                 transform=None,
+                 prefetch=False):
 
         self.path_list = path_list
         self.roi_number = roi_number
         self.num_class = num_class
+        self.input_shape = input_shape
         self.transform = transform
+        self.prefetch = prefetch
 
+        if self.prefetch:
+            self.image_buffer, self.mask_buffer = data_pre_loader(self.path_list,False,self.input_shape,self.num_class)
 
     def __len__(self):
         return len(self.path_list)
 
     def __getitem__(self, index):
         # Get image and mask
-        image = hdf5_reader(self.path_list[index],'image')
-        mask = hdf5_reader(self.path_list[index],'label')
+        if self.prefetch:
+            image = self.image_buffer[index]
+            mask = self.mask_buffer[index]
+        else:
+            image = hdf5_reader(self.path_list[index],'image')
+            mask = hdf5_reader(self.path_list[index],'label')
 
         if self.roi_number is not None:
             if isinstance(self.roi_number,list):
@@ -195,15 +227,26 @@ class BalanceDataGenerator(Dataset):
                  path_list=None,
                  roi_number=None,
                  num_class=2,
+                 input_shape=None,
                  transform=None,
+                 prefetch=False,
                  factor=0.3):
 
         self.path_list = path_list
         self.roi_number = roi_number
         self.num_class = num_class
+        self.input_shape = input_shape
         self.transform = transform
+        self.prefetch = prefetch
         self.factor = factor
 
+        if self.prefetch:
+            self.image_buffer = []
+            self.mask_buffer = []
+            for sublist in self.path_list:
+                tmp_image, tmp_mask = data_pre_loader(sublist,False,self.input_shape,self.num_class)
+                self.image_buffer.append(tmp_image)
+                self.mask_buffer.append(tmp_mask)
 
     def __len__(self):
         assert isinstance(self.path_list[0],list)
@@ -212,10 +255,16 @@ class BalanceDataGenerator(Dataset):
 
     def __getitem__(self, index):
         # balance sampler
-        item_path = random.choice(self.path_list[int(random.random() < self.factor)])
-        # Get image and mask
-        image = hdf5_reader(item_path,'image')
-        mask = hdf5_reader(item_path,'label')
+        if self.prefetch:
+            list_id = int(random.random() < self.factor)
+            index = random.choice(range(len(self.path_list[list_id])))
+            image = self.image_buffer[list_id][index]
+            mask = self.mask_buffer[list_id][index]
+        else:
+            item_path = random.choice(self.path_list[int(random.random() < self.factor)])
+            # Get image and mask
+            image = hdf5_reader(item_path,'image')
+            mask = hdf5_reader(item_path,'label')
 
         if self.roi_number is not None:
             if isinstance(self.roi_number,list):

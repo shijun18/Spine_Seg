@@ -159,13 +159,15 @@ def binary_dice(y_true, y_pred):
     return (2. * intersection + smooth) / (np.sum(y_true_f) + np.sum(y_pred_f) + smooth)
 
 def multi_dice(y_true,y_pred,num_classes):
-    dice_list = []
+    dice_list = -1.0 * np.ones((num_classes),dtype=np.float32)
     for i in range(num_classes):
+        if i+1 not in y_true and i+1 not in y_pred:
+            continue
         true = (y_true == i+1).astype(np.float32)
         pred = (y_pred == i+1).astype(np.float32)
         dice = binary_dice(true,pred)
-        dice_list.append(dice)
+        dice_list[i] = round(dice,4)
+
+    dice_list = np.where(dice_list == -1.0, np.nan, dice_list)
     
-    dice_list = [round(case, 4) for case in dice_list]
-    
-    return dice_list, round(np.mean(dice_list),4)
+    return dice_list, round(np.nanmean(dice_list),4)

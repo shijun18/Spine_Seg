@@ -22,8 +22,8 @@ json_path = {
 DISEASE = 'Spine' 
 MODE = 'seg'
 NET_NAME = 'deeplabv3+'
-ENCODER_NAME = 'efficientnet-b5'
-VERSION = 'v4.10-balance'
+ENCODER_NAME = 'resnet50'
+VERSION = 'v4.3-balance'
 
 with open(json_path[DISEASE], 'r') as fp:
     info = json.load(fp)
@@ -47,8 +47,8 @@ GPU_NUM = len(DEVICE.split(','))
 # ROI_NUMBER = None
 # ROI_NUMBER = [1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18]# or [1-N]
 # ROI_NUMBER = [1,2,3,4,5,6,7,8,11,12,13,14,15,16,17]# or [1-N]
-# ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
-ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
+ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
+# ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
 # ROI_NUMBER = [9,10,18,19]
 # ROI_NUMBER = [10,19]
 
@@ -70,6 +70,7 @@ STD = info['mean_std']['std']
 
 #--------------------------------- mode and data path setting
 
+# all
 if 'all' in VERSION:
     #all
     PATH_LIST = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
@@ -107,12 +108,12 @@ elif 'balance' in VERSION:
 
 #--------------------------------- others
 INPUT_SHAPE = (512,512)
-BATCH_SIZE = 24
+BATCH_SIZE = 32
 
 CKPT_PATH = './ckpt/{}/{}/{}/{}/fold{}'.format(DISEASE,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
 
 WEIGHT_PATH = get_weight_path(CKPT_PATH)
-print(WEIGHT_PATH)
+# print(WEIGHT_PATH)
 
 INIT_TRAINER = {
   'net_name':NET_NAME,
@@ -142,7 +143,8 @@ INIT_TRAINER = {
   'topk':20,
   'freeze':None,
   'use_fp16':True, #False if the machine you used without tensor core
-  'statistic_threshold':True
+  'statistic_threshold':True,
+  'prefetch':False
  }
 #---------------------------------
 
@@ -171,6 +173,7 @@ SETUP_TRAINER = {
   'loss_fun':LOSS_FUN,
   'class_weight':None, #[1,4]
   'lr_scheduler':'MultiStepLR', #'CosineAnnealingLR','MultiStepLR'
+  'balance':True if 'balance' in VERSION else False
   }
 #---------------------------------
 TEST_PATH = None

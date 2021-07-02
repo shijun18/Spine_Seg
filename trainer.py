@@ -14,8 +14,6 @@ from torch.nn import functional as F
 
 from data_utils.transformer import RandomFlip2D, RandomRotate2D, RandomErase2D,RandomZoom2D,RandomAdjust2D,RandomNoise2D,RandomDistort2D
 from data_utils.data_loader import To_Tensor, CropResize, Normalize
-# from data_utils.data_loader import DataGenerator as DataGenerator
-from data_utils.data_loader import BalanceDataGenerator as DataGenerator
 from torch.cuda.amp import autocast as autocast
 
 import torch.distributed as dist
@@ -73,7 +71,8 @@ class SemanticSeg(object):
                  topk=10,
                  freeze=None,
                  use_fp16=True,
-                 statistic_threshold=False):
+                 statistic_threshold=False,
+                 prefetch=False):
         super(SemanticSeg, self).__init__()
 
         self.net_name = net_name
@@ -112,6 +111,7 @@ class SemanticSeg(object):
         self.freeze = freeze
         self.use_fp16 = use_fp16
         self.statistic_threshold = statistic_threshold
+        self.prefetch = prefetch
 
         os.environ['CUDA_VISIBLE_DEVICES'] = self.device
 
@@ -119,10 +119,6 @@ class SemanticSeg(object):
 
         if self.pre_trained:
             self._get_pre_trained(self.weight_path,ckpt_point)
-
-
-        # if self.roi_number is not None:
-        #     assert self.num_classes == 2, "num_classes must be set to 2 for binary segmentation"
         
         
 
@@ -136,7 +132,8 @@ class SemanticSeg(object):
                 optimizer='Adam',
                 loss_fun='Cross_Entropy',
                 class_weight=None,
-                lr_scheduler=None):
+                lr_scheduler=None,
+                balance=False):
 
         torch.manual_seed(1000)
         np.random.seed(1000)
@@ -221,10 +218,18 @@ class SemanticSeg(object):
                 RandomNoise2D(),
                 To_Tensor(num_class=self.num_classes)
             ])
+
+        if balance:
+            from data_utils.data_loader import BalanceDataGenerator as DataGenerator
+        else:
+            from data_utils.data_loader import DataGenerator as DataGenerator
+
         train_dataset = DataGenerator(train_path,
                                       roi_number=self.roi_number,
                                       num_class=self.num_classes,
-                                      transform=train_transformer)
+                                      input_shape=self.input_shape,
+                                      transform=train_transformer,
+                                      prefetch=self.prefetch)
 
         train_loader = DataLoader(train_dataset,
                                   batch_size=self.batch_size,
@@ -249,9 +254,9 @@ class SemanticSeg(object):
         # early_stopping = EarlyStopping(patience=20,verbose=True,monitor='val_loss',op_type='min')
         early_stopping = EarlyStopping(patience=20,verbose=True,monitor='val_dice',op_type='max')
         for epoch in range(self.start_epoch, self.n_epoch):
-            train_loss, train_dice, train_acc = self._train_on_epoch(epoch, net, loss, optimizer, train_loader, scaler)
+            train_loss, train_dice, train_run_dice, train_acc = self._train_on_epoch(epoch, net, loss, optimizer, train_loader, scaler)
 
-            val_loss, val_dice, val_acc = self._val_on_epoch(epoch, net, loss, val_path)
+            val_loss, val_dice, val_run_dice, val_acc = self._val_on_epoch(epoch, net, loss, val_path)
 
             if lr_scheduler is not None:
                 lr_scheduler.step()
@@ -259,7 +264,8 @@ class SemanticSeg(object):
             torch.cuda.empty_cache()
             print('epoch:{},train_loss:{:.5f},val_loss:{:.5f}'.format(epoch, train_loss, val_loss))
 
-            print('epoch:{},train_dice:{:.5f},val_dice:{:.5f}'.format(epoch, train_dice, val_dice))
+            print('epoch:{},train_dice:{:.5f},train_run_dice:{:.5f},val_dice:{:.5f},val_run_dice:{:.5f}'.format(
+                epoch, train_dice,train_run_dice,val_dice,val_run_dice))
 
             self.writer.add_scalars('data/loss', {
                 'train': train_loss,
@@ -296,8 +302,7 @@ class SemanticSeg(object):
                 }
 
                 file_name = 'epoch:{}-train_loss:{:.5f}-train_dice:{:.5f}-train_acc:{:.5f}-val_loss:{:.5f}-val_dice:{:.5f}-val_acc:{:.5f}.pth'.format(
-                    epoch, train_loss, train_dice, train_acc, val_loss,
-                    val_dice, val_acc)
+                    epoch, train_loss, train_dice, train_acc, val_loss, val_dice, val_acc)
                 
                 save_path = os.path.join(output_dir, file_name)
                 print("Save as %s" % file_name)
@@ -402,8 +407,7 @@ class SemanticSeg(object):
 
             self.global_step += 1
 
-        return train_loss.avg, run_dice.compute_dice()[0], train_acc.avg
-        #return train_loss.avg, train_dice.avg, train_acc.avg
+        return train_loss.avg, train_dice.avg, run_dice.compute_dice()[0],train_acc.avg
 
     def _val_on_epoch(self, epoch, net, criterion, val_path, val_transformer=None):
 
@@ -425,10 +429,18 @@ class SemanticSeg(object):
                 To_Tensor(num_class=self.num_classes)
             ])
 
+        if isinstance(val_path[0],list):
+            tmp_path = []
+            for sublist in val_path:
+                tmp_path.extend(sublist)
+            val_path = tmp_path
+        from data_utils.data_loader import DataGenerator as DataGenerator
         val_dataset = DataGenerator(val_path,
                                     roi_number=self.roi_number,
                                     num_class=self.num_classes,
-                                    transform=val_transformer)
+                                    input_shape=self.input_shape,
+                                    transform=val_transformer,
+                                    prefetch=self.prefetch)
 
         val_loader = DataLoader(val_dataset,
                                 batch_size=self.batch_size,
@@ -505,8 +517,7 @@ class SemanticSeg(object):
                     else:
                         print('epoch:{},step:{},val_loss:{:.5f},val_dice:{:.5f},val_acc:{:.5f}'.format(epoch, step, loss.item(), dice.item(), acc.item()))
 
-        return val_loss.avg, run_dice.compute_dice()[0], val_acc.avg
-        # return val_loss.avg, val_dice.avg, val_acc.avg
+        return val_loss.avg, val_dice.avg, run_dice.compute_dice()[0], val_acc.avg
 
     def test(self, test_path, save_path=None, net=None, mode='seg', save_flag=False):
         if net is None:
@@ -527,14 +538,16 @@ class SemanticSeg(object):
         else:
             test_transformer = transforms.Compose([
                 Normalize(mean=self.mean,std=self.std),
-                CropResize(dim=self.input_shape,num_class=self.num_classes,crop=self.crop),
+                # CropResize(dim=self.input_shape,num_class=self.num_classes,crop=self.crop),
                 To_Tensor(num_class=self.num_classes)
             ])
-
+        from data_utils.data_loader import DataGenerator as DataGenerator
         test_dataset = DataGenerator(test_path,
                                     roi_number=self.roi_number,
                                     num_class=self.num_classes,
-                                    transform=test_transformer)
+                                    input_shape=self.input_shape,
+                                    transform=test_transformer,
+                                    prefetch=self.prefetch)
 
         test_loader = DataLoader(test_dataset,
                                 batch_size=20,
