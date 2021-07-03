@@ -49,5 +49,5 @@ if __name__ == "__main__":
     json_file = './static_files/spine.json'
     with open(json_file, 'r') as fp:
         info = json.load(fp)
-    # data_check(info['npy_path'],info['annotation_list'])
+    data_check(info['npy_path'],info['annotation_list'])
     cal_mean_std(info['npy_path'])

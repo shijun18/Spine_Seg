@@ -1,7 +1,7 @@
 {
-    "nii_path":"/staff/shijun/dataset/Spine/train",
-    "npy_path":"/staff/shijun/dataset/Med_Seg/Spine/npy_data",
-    "metadata_path":"/staff/shijun/torch_projects/Spine_Seg/converter/meta_data/spine_metadata.csv",
+    "nii_path":"../dataset/train",
+    "npy_path":"../dataset/npy_data",
+    "metadata_path":"./meta_data/spine_metadata.csv",
     "annotation_num":19,
     "annotation_list":[
         "S",
@@ -24,23 +24,11 @@
         "T10/T11",
         "T9/T10"
     ],
-    "target_format":{
-        "size":[512,512],
-        "thickness":4.4,
-        "pixel_spacing":0.34
-    },
     "2d_data":{
-        "save_path":"/staff/shijun/dataset/Med_Seg/Spine/2d_data",
-        "test_path":"/staff/shijun/dataset/Med_Seg/Spine/2d_test_data",
+        "save_path":"../dataset/2d_data",
         "crop":0,
         "shape":[512,512],
-        "csv_path":"/staff/shijun/torch_projects/Spine_Seg/converter/static_files/spine.csv",
-        "test_csv_path":"/staff/shijun/torch_projects/Spine_Seg/converter/static_files/spine_test.csv"
-    },
-    "3d_data":{
-        "save_path":"/staff/shijun/dataset/Med_Seg/Spine/3d_data",
-        "crop":0,
-        "shape":[128,256,256]
+        "csv_path":"./static_files/spine.csv"
     },
     "mean_std":{
         "mean":239,

@@ -40,9 +40,8 @@ def prepare_data(input_path, save_path, data_shape, crop=0, mode='2d'):
 
     path_list = os.listdir(input_path)
     start = time.time()
-    # keep 10 samples as final test set
-    # for item in tqdm(path_list[:-10]):
-    for item in tqdm(path_list[-10:]):
+
+    for item in tqdm(path_list):
         ID, _ = os.path.splitext(item)
         # print(ID)
         data_path = os.path.join(input_path, item)
@@ -78,6 +77,4 @@ if __name__ == "__main__":
         info = json.load(fp)
         input_path = info['npy_path']
         setting_2d = info['2d_data']
-        setting_3d = info['3d_data']
-    # prepare_data(input_path, setting_2d['save_path'], tuple(setting_2d['shape']), setting_2d['crop'],mode='2d')
-    prepare_data(input_path, setting_2d['test_path'], tuple(setting_2d['shape']), setting_2d['crop'],mode='2d')
+    prepare_data(input_path, setting_2d['save_path'], tuple(setting_2d['shape']), setting_2d['crop'],mode='2d')

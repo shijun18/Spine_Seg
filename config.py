@@ -16,7 +16,7 @@ __mode__ = ['cls','seg']
 
 
 json_path = {
-    'Spine':'/staff/shijun/torch_projects/Spine_Seg/converter/static_files/spine.json',
+    'Spine':'./converter/static_files/spine.json',
 }
     
 DISEASE = 'Spine' 
@@ -49,14 +49,11 @@ ROI_NUMBER = [1,2,3,4,5,6,7,8,9,10]
 # ROI_NUMBER = [11,12,13,14,15,16,17,18,19]
 
 
-NUM_CLASSES = info['annotation_num'] + 1  # 2 for binary, more for multiple classes
+NUM_CLASSES = info['annotation_num'] + 1  #
 if ROI_NUMBER is not None:
     if isinstance(ROI_NUMBER,list):
         NUM_CLASSES = len(ROI_NUMBER) + 1
         ROI_NAME = 'Part_{}'.format(str(len(ROI_NUMBER)))
-    else:
-        NUM_CLASSES = 2
-        ROI_NAME = info['annotation_list'][ROI_NUMBER - 1]
 else:
     ROI_NAME = 'All'
 
@@ -66,20 +63,8 @@ STD = info['mean_std']['std']
 #---------------------------------
 
 #--------------------------------- mode and data path setting
-#all
+
 PATH_LIST = glob.glob(os.path.join(info['2d_data']['save_path'],'*.hdf5'))
-
-#zero
-# PATH_LIST = get_path_with_annotation(info['2d_data']['csv_path'],'path',ROI_NAME)
-
-
-#half
-# PATH_LIST = get_path_with_annotation_ratio(info['2d_data']['csv_path'],'path','T9/T10',ratio=0.5)
-
-
-#equal
-# PATH_LIST = get_path_with_annotation_ratio(info['2d_data']['csv_path'],'path','T9/T10',ratio=1)
-#---------------------------------
 
 
 #--------------------------------- others

@@ -1,49 +1,61 @@
-import os
-from posixpath import basename
+import os,glob
+from sys import version
 import numpy as np
 import torch
 from torch.cuda.amp import autocast as autocast
 from skimage.transform import resize
 from tqdm import tqdm
 
-from utils import get_weight_path,nii_reader,save_as_nii
+from utils import nii_reader,save_as_nii
 from trainer import SemanticSeg
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-tp',
+                    '--test_path',
+                    default=None,
+                    type=str)
+parser.add_argument('-cp',
+                    '--ckpt_path',
+                    default=None,
+                    type=str)                   
+args = parser.parse_args()
 
 
 ANNOTATION_LIST = ["S","L5","L4","L3","L2","L1","T12","T11","T10","T9","L5/S","L4/L5","L3/L4","L2/L3","L1/L2","T12/L1","T11/T12","T10/T11","T9/T10"]
 
-DISEASE = 'Spine' 
 MODE = 'seg'
 NET_NAME = 'deeplabv3+'
 ENCODER_NAME = 'resnet50'
 VERSION = 'v4.3-all'
 
-DEVICE = '1'
+DEVICE = '0'
+
+if args.ckpt_path is not None:
+    ckpt_path = '{}/{}'.format(args.ckpt_path,VERSION)
+else:
+    ckpt_path = '../trained_model/{}'.format(VERSION)
+
+if args.test_path is not None:
+    test_path = args.test_path
+else:
+    test_path = './dataset/test2/MR'
 
 # Arguments for trainer initialization
-
 ROI_NUMBER_LIST = [[1,2,3,4,5,6,7,8,9,10],[11,12,13,14,15,16,17,18,19]]
 
 for ROI_NUMBER in ROI_NUMBER_LIST:
-    NUM_CLASSES = 20 if ROI_NUMBER is None else len(ROI_NUMBER) + 1
-    if ROI_NUMBER is not None:
-        if isinstance(ROI_NUMBER,list):
-            NUM_CLASSES = len(ROI_NUMBER) + 1
-            ROI_NAME = 'Part_{}'.format(str(len(ROI_NUMBER)))
-        else:
-            NUM_CLASSES = 2
-            ROI_NAME = ANNOTATION_LIST[ROI_NUMBER - 1]
-    else:
-        ROI_NAME = 'All'
+    NUM_CLASSES = len(ROI_NUMBER) + 1
+    ROI_NAME = 'Part_{}'.format(str(len(ROI_NUMBER)))
 
 
     INPUT_SHAPE= (512,512)
 
-    for CURRENT_FOLD in range(1,6):
+    for CURRENT_FOLD in range(1,4):
         print("fold %d start!"%(CURRENT_FOLD))
-        CKPT_PATH = './ckpt/{}/{}/{}/{}/fold{}'.format(DISEASE,MODE,VERSION,ROI_NAME,str(CURRENT_FOLD))
+        CKPT_PATH = '{}/{}/fold{}'.format(ckpt_path,ROI_NAME,str(CURRENT_FOLD))
 
-        WEIGHT_PATH = get_weight_path(CKPT_PATH)
+        WEIGHT_PATH = glob.glob(os.path.join(CKPT_PATH,'*.pth'))[0]
         print(WEIGHT_PATH)
 
         INIT_TRAINER = {
@@ -68,8 +80,8 @@ for ROI_NUMBER in ROI_NUMBER_LIST:
         net = segnetwork.net
         net = net.cuda()
 
-        test_path = '/staff/shijun/dataset/Spine/test1/MR'
-        save_path = './result/{}/origin/{}/{}/fold{}'.format(DISEASE,VERSION,ROI_NAME,str(CURRENT_FOLD))
+        
+        save_path = './result/{}/{}/fold{}'.format(VERSION,ROI_NAME,str(CURRENT_FOLD))
         sample_list = [case.path for case in os.scandir(test_path)]
 
         if not os.path.exists(save_path):

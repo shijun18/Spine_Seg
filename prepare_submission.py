@@ -17,9 +17,9 @@ def post_process(label,n):
     return final
 
 
-part10_path = './result/Spine/v4.3-all/Part_10/fusion/'
-part9_path = './result/Spine/v4.3-all/Part_9/fusion/'
-save_folder = './result/Spine/v4.3-all/segmentation_results/'
+part10_path = './result/v4.3-all/Part_10/fusion/'
+part9_path = './result/v4.3-all/Part_9/fusion/'
+save_folder = './result/v4.3-all/segmentation_results/'
 
 POST = True
 

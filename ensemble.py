@@ -6,13 +6,13 @@ from tqdm import tqdm
 
 
 
-root_path = './result/Spine/origin/v4.3-all/'
+root_path = './result/v4.3-all/'
 
 for part in [9,10]:
     num_classes = part
 
-    result_list = [root_path + f'Part_{part}/' + f'fold{case}' for case in range(1,6)]
-    save_folder = './result/Spine/v4.3-all/Part_{}/fusion/'.format(part)
+    result_list = [root_path + f'Part_{part}/' + f'fold{case}' for case in range(1,4)]
+    save_folder = './result/v4.3-all/Part_{}/fusion/'.format(part)
 
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)

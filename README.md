@@ -21,7 +21,6 @@
   - trainer.py (训练主类)
   - run.py (运行脚本)
   - test.py (测试脚本)
-  - eval.py (验证脚本)
   - ensemble.py (结果融合)
   - prepare_submission.py (准备提交结果)
   - utils.py (工具箱)
@@ -32,7 +31,7 @@
 
 依赖包: 见 `requirements.txt`，ps:可能不全，遗漏自补。
 
-硬件:  `NVIDIA A100` *2
+硬件:  `NVIDIA A100` *1
 
 ### 实验设置
 
@@ -43,6 +42,61 @@
 | lr_scheduler | optimizer | loss                      | Fold num |
 | ------------ | --------- | ------------------------- | -------- |
 | MultiStepLR  | Adam      | Topk Cross Entropy (k=20) | 5        |
+
+### 数据生成
+
+- 将训练数据路径写入 `converter/static_files/spine.json`中的 `nii_path`，并指定存储路径 `npy_data`和 `2d_data/save_path`，前者为3d格式，后者为2d切片数据，`spine.json`文件如下。
+
+  ```json
+  {
+      "nii_path":"../dataset/train",
+      "npy_path":"../dataset/npy_data",
+      "metadata_path":"./meta_data/spine_metadata.csv",
+      "annotation_num":19,
+      "annotation_list":[
+          "S",
+          "L5",
+          "L4",
+          "L3",
+          "L2",
+          "L1",
+          "T12",
+          "T11",
+          "T10",
+          "T9",
+          "L5/S",
+          "L4/L5",
+          "L3/L4",
+          "L2/L3",
+          "L1/L2",
+          "T12/L1",
+          "T11/T12",
+          "T10/T11",
+          "T9/T10"
+      ],
+      "2d_data":{
+          "save_path":"../dataset/2d_data",
+          "crop":0,
+          "shape":[512,512],
+          "csv_path":"./static_files/spine.csv"
+      },
+      "mean_std":{
+          "mean":239,
+          "std":257
+      }
+  }
+  ```
+- nii 转 HDF5
+
+  ```shell
+  cd converter
+  python nii2npy.py
+  ```
+- 生成2d切片
+
+  ```shell
+  python prepare_data.py
+  ```
 
 ### 训练过程
 
@@ -78,7 +132,7 @@
 - 生成结果
 
   ```shell
-  python test.py
+  python test.py -tp ./dataset/test2/MR -cp ../trained_model/
   ```
 - 结果融合
 
@@ -95,5 +149,6 @@
   将 `segmentation_results` 压缩成 `.zip`
 
   ```shell
+  cd result/v4.3-all
   zip -r -q shijun.zip segmentation_results
   ```
