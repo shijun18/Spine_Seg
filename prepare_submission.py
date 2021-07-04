@@ -31,14 +31,14 @@ def post_process(label,n):
 
 version_list = ['v4.3-balance','v4.3-all','v4.10-balance','final']
 
-for ver in version_list[-1:]:
-    # part10_path = './post_result/Spine/{}/Part_10/fusion/'.format(ver)
-    # part9_path = './post_result/Spine/{}/Part_9/fusion/'.format(ver)
-    # save_folder = './post_result/Spine/{}/segmentation_results/'.format(ver)
+for ver in version_list:
+    part10_path = './post_result/Spine/{}/Part_10/weighted_fusion/'.format(ver)
+    part9_path = './post_result/Spine/{}/Part_9/weighted_fusion/'.format(ver)
+    save_folder = './post_result/Spine/{}/weighted_segmentation_results/'.format(ver)
 
-    part10_path = './result/Spine/{}/Part_10/fusion/'.format(ver)
-    part9_path = './result/Spine/{}/Part_9/fusion/'.format(ver)
-    save_folder = './result/Spine/{}/segmentation_results/'.format(ver)
+    # part10_path = './result/Spine/{}/Part_10/fusion/'.format(ver)
+    # part9_path = './result/Spine/{}/Part_9/fusion/'.format(ver)
+    # save_folder = './result/Spine/{}/segmentation_results/'.format(ver)
     POST = True
 
     if not os.path.exists(save_folder):
